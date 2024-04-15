@@ -1,0 +1,88 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+  http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>net.java.dev.jna</groupId>
+  <artifactId>jnaf</artifactId>
+  <version>TEMPLATE</version>
+  <packaging>jar</packaging>
+
+  <name>Java Native Access Foreign</name>
+  <description>Java Native Access Foreign</description>
+  <url>https://github.com/Fuerte1/Jnaf</url>
+
+  <licenses>
+    <license>
+      <name>LGPL-2.1-or-later</name>
+      <url>https://www.gnu.org/licenses/old-licenses/lgpl-2.1</url>
+      <distribution>repo</distribution>
+      <comments>
+        Java Native Access Foreign (JNAF) is licensed under the LGPL, version 2.1 or
+        later, or the Apache License, version 2.0. You can freely decide which
+        license you want to apply to the project.
+      </comments>
+    </license>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>
+        Java Native Access Foreign (JNAF) is licensed under the LGPL, version 2.1 or
+        later, or the Apache License, version 2.0. You can freely decide which
+        license you want to apply to the project.
+      </comments>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/java-native-access/jna</connection>
+    <developerConnection>scm:git:ssh://git@github.com/java-native-access/jna.git</developerConnection>
+    <url>https://github.com/java-native-access/jna</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <id>Fuerte1</id>
+      <name>Fuerte1</name>
+      <roles>
+        <role>Owner</role>
+      </roles>
+    </developer>
+  </developers>
+
+  <properties>
+    <maven.compiler.release>22</maven.compiler.release>
+  </properties>
+
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test</testSourceDirectory>
+  </build>
+
+  <dependencies>
+    <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.junit.vintage/junit-vintage-engine -->
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.reflections/reflections -->
+    <dependency>
+      <groupId>org.reflections</groupId>
+      <artifactId>reflections</artifactId>
+      <version>0.10.2</version>
+    </dependency>
+
+  </dependencies>
+
+</project>
