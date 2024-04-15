@@ -67,7 +67,7 @@
       <resource>
         <directory>build/native-win32-x86-64</directory>
         <includes>
-          <include>testlib.dll</include>
+          <include>testlib*.dll</include>
         </includes>
       </resource>
     </resources>
