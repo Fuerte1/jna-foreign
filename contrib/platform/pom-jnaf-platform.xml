@@ -5,12 +5,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>net.java.dev.jnaf</groupId>
-  <artifactId>jna</artifactId>
+  <artifactId>jna-platform</artifactId>
   <version>TEMPLATE</version>
   <packaging>jar</packaging>
 
-  <name>Java Native Access Foreign</name>
-  <description>Java Native Access Foreign</description>
+  <name>Java Native Access Foreign Platform</name>
+  <description>Java Native Access Foreign Platform</description>
   <url>https://github.com/Fuerte1/jna-foreign</url>
 
   <licenses>
@@ -76,13 +76,23 @@
       <version>5.10.2</version>
       <scope>test</scope>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.reflections/reflections -->
     <dependency>
-      <groupId>org.reflections</groupId>
-      <artifactId>reflections</artifactId>
-      <version>0.10.2</version>
+      <groupId>net.java.dev.jnaf</groupId>
+      <artifactId>jna</artifactId>
+      <version>TEMPLATE</version>
     </dependency>
-
+    <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk18on -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>1.78</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk18on -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+      <version>1.78</version>
+    </dependency>
   </dependencies>
 
 </project>

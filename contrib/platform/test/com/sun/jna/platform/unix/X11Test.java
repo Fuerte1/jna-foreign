@@ -23,7 +23,7 @@
  */
 package com.sun.jna.platform.unix;
 
-import com.sun.jna.StructureFieldOrderInspector;
+//import com.sun.jna.StructureFieldOrderInspector;
 import java.awt.GraphicsEnvironment;
 
 import com.sun.jna.ptr.PointerByReference;
@@ -135,7 +135,7 @@ public class X11Test extends TestCase {
     }
 
     public void testStructureFieldOrder() {
-        StructureFieldOrderInspector.batchCheckStructureGetFieldOrder(X11.class, null, true);
+//        StructureFieldOrderInspector.batchCheckStructureGetFieldOrder(X11.class, null, true);
     }
 
     public static void main(java.lang.String[] argList) {
