@@ -220,21 +220,21 @@ public final class Native implements Version {
     static {
         loadNativeDispatchLibrary();
 
-        if (! isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
-            String LS = System.lineSeparator();
-            throw new Error(LS + LS
-                            + "There is an incompatible JNA native library installed on this system" + LS
-                            + "Expected: " + VERSION_NATIVE + LS
-                            + "Found:    " + getNativeVersion() + LS
-                            + (jnidispatchPath != null
-                               ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
-                            + "." + LS
-                            + "To resolve this issue you may do one of the following:" + LS
-                            + " - remove or uninstall the offending library" + LS
-                            + " - set the system property jna.nosys=true" + LS
-                            + " - set jna.boot.library.path to include the path to the version of the " + LS
-                            + "   jnidispatch library included with the JNA jar file you are using" + LS);
-        }
+//        if (! isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
+//            String LS = System.lineSeparator();
+//            throw new Error(LS + LS
+//                            + "There is an incompatible JNA native library installed on this system" + LS
+//                            + "Expected: " + VERSION_NATIVE + LS
+//                            + "Found:    " + getNativeVersion() + LS
+//                            + (jnidispatchPath != null
+//                               ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
+//                            + "." + LS
+//                            + "To resolve this issue you may do one of the following:" + LS
+//                            + " - remove or uninstall the offending library" + LS
+//                            + " - set the system property jna.nosys=true" + LS
+//                            + " - set jna.boot.library.path to include the path to the version of the " + LS
+//                            + "   jnidispatch library included with the JNA jar file you are using" + LS);
+//        }
 
         POINTER_SIZE = sizeof(TYPE_VOIDP);
         LONG_SIZE = sizeof(TYPE_LONG);

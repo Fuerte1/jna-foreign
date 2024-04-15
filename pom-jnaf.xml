@@ -6,7 +6,7 @@
 
   <groupId>net.java.dev.jnaf</groupId>
   <artifactId>jna</artifactId>
-  <version>TEMPLATE</version>
+  <version>7.0.1</version>
   <packaging>jar</packaging>
 
   <name>Java Native Access Foreign</name>
@@ -59,6 +59,38 @@
   <build>
     <sourceDirectory>src</sourceDirectory>
     <testSourceDirectory>test</testSourceDirectory>
+    <outputDirectory>target</outputDirectory>
+    <resources>
+      <resource>
+        <directory>build.eclipse/classes</directory>
+      </resource>
+      <resource>
+        <directory>build/native-win32-x86-64</directory>
+        <includes>
+          <include>testlib.dll</include>
+        </includes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <additionalClasspathElements>
+            <additionalClasspathElement>${basedir}/build/native-win32-x86-64</additionalClasspathElement>
+            <additionalClasspathElement>${basedir}/build.eclipse/classes</additionalClasspathElement>
+          </additionalClasspathElements>
+          <systemPropertyVariables>
+            <jna.boot.library.path>build/native-win32-x86-64</jna.boot.library.path>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 
   <dependencies>
