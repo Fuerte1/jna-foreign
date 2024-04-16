@@ -23,6 +23,7 @@
 package com.sun.jna;
 
 import java.io.Closeable;
+import java.lang.foreign.Arena;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -85,6 +86,8 @@ public class Memory extends Pointer implements Closeable {
      */
     private class SharedMemory extends Memory {
         public SharedMemory(long offset, long size) {
+            this.arena = Memory.this.arena;
+            this.segment = Memory.this.segment;
             this.size = size;
             this.peer = Memory.this.peer + offset;
         }
@@ -109,17 +112,24 @@ public class Memory extends Pointer implements Closeable {
      *
      * @param size number of <em>bytes</em> of space to allocate
      */
+    @Deprecated
     public Memory(long size) {
+        this(Arena.ofAuto(), size);
+    }
+
+    public Memory(Arena arena, long size) {
+        this.arena = arena;
         this.size = size;
         if (size <= 0) {
             throw new IllegalArgumentException("Allocation size must be greater than zero");
         }
-        peer = malloc(size);
+        segment = arena.allocate(size);
+        peer = segment.address();
         if (peer == 0)
             throw new OutOfMemoryError("Cannot allocate " + size + " bytes");
-
-        allocatedMemory.put(peer, new WeakReference<>(this));
-        cleanable = Cleaner.getCleaner().register(this, new MemoryDisposer(peer));
+//        allocatedMemory.put(peer, new WeakReference<>(this));
+//        cleanable = Cleaner.getCleaner().register(this, new MemoryDisposer(peer));
+        cleanable = null;
     }
 
     protected Memory() {
@@ -184,6 +194,7 @@ public class Memory extends Pointer implements Closeable {
     /** Free the native memory and set peer to zero */
     @Override
     public void close() {
+        segment.unload();
         peer = 0;
         if (cleanable != null) {
             cleanable.clean();
@@ -749,6 +760,7 @@ public class Memory extends Pointer implements Closeable {
         }
     }
 
+    @Deprecated
     protected static long malloc(long size) {
         return Native.malloc(size);
     }

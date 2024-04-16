@@ -24,8 +24,12 @@
 
 package com.sun.jna;
 
+import java.lang.foreign.Arena;
+
 /** Context for converting a Java value to a native one. */
 public class ToNativeContext {
-    ToNativeContext() {
+    public Arena arena;
+    ToNativeContext(Arena arena) {
+        this.arena = arena;
     }
 }

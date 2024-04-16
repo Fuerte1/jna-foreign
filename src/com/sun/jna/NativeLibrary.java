@@ -27,28 +27,25 @@ package com.sun.jna;
 
 import com.sun.jna.internal.Cleaner;
 import static com.sun.jna.Native.DEBUG_LOAD;
+import static com.sun.jna.Native.jni;
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -96,6 +93,7 @@ public class NativeLibrary implements Closeable {
     };
 
     private final Cleaner.Cleanable cleanable;
+    private final SymbolLookup symbolLookup;
     private volatile long handle;
     private final String libraryName;
     private final String libraryPath;
@@ -121,10 +119,12 @@ public class NativeLibrary implements Closeable {
     }
 
     @SuppressWarnings("LeakingThisInConstructor")
-    private NativeLibrary(String libraryName, String libraryPath, long handle, Map<String, ?> options) {
+    private NativeLibrary(String libraryName, String libraryPath, long handle, Map<String, ?> options,
+            SymbolLookup symbolLookup) {
         this.libraryName = getLibraryName(libraryName);
         this.libraryPath = libraryPath;
         this.handle = handle;
+        this.symbolLookup = symbolLookup;
         this.cleanable = Cleaner.getCleaner().register(this, new NativeLibraryDisposer(handle));
         Object option = options.get(Library.OPTION_CALLING_CONVENTION);
         int callingConvention = option instanceof Number ? ((Number)option).intValue() : Function.C_CONVENTION;
@@ -145,22 +145,26 @@ public class NativeLibrary implements Closeable {
 
         // Special workaround for w32 kernel32.GetLastError
         // Short-circuit the function to use built-in GetLastError access
-        if (Platform.isWindows() && "kernel32".equals(this.libraryName.toLowerCase())) {
+        if (Platform.isWindows() && "kernel32".equalsIgnoreCase(this.libraryName)) {
             synchronized(functions) {
                 Function f = new Function(this, "GetLastError", Function.ALT_CONVENTION, encoding) {
                         @Override
-                        Object invoke(Object[] args, Class<?> returnType, boolean b, int fixedArgs) {
-                            return Integer.valueOf(Native.getLastError());
+                        Object invoke(Arena arena, Object[] args, Class<?> returnType, boolean b, int fixedArgs) {
+                            return Native.getLastError();
                         }
 
                         @Override
                         Object invoke(Method invokingMethod, Class<?>[] paramTypes, Class<?> returnType, Object[] inArgs, Map<String, ?> options) {
-                            return Integer.valueOf(Native.getLastError());
+                            return Native.getLastError();
                         }
                     };
                 functions.put(functionKey("GetLastError", callFlags, encoding), f);
             }
         }
+    }
+
+    public SymbolLookup getSymbolLookup() {
+        return symbolLookup;
     }
 
     private static final int DEFAULT_OPEN_OPTIONS = -1;
@@ -172,8 +176,44 @@ public class NativeLibrary implements Closeable {
         return DEFAULT_OPEN_OPTIONS;
     }
 
+    private static ConcurrentHashMap<String, SymbolLookup> resourceLibrares = new ConcurrentHashMap<>();
+
+    public static SymbolLookup getSymbolLookup(String libraryName) {
+        SymbolLookup lookup = resourceLibrares.get(libraryName);
+        if (lookup != null) {
+            return lookup;
+        }
+        try {
+            lookup = SymbolLookup.libraryLookup(libraryName, Native.arena);
+            resourceLibrares.put(libraryName, lookup);
+            return lookup;
+        } catch (Exception e) {
+            String fullName = libraryName;
+            if (!libraryName.endsWith(".dll")) {
+                fullName = libraryName + ".dll";
+            }
+            URL resource = NativeLibrary.class.getClassLoader().getResource(fullName);
+            if (resource != null) {
+                try {
+                    Path path = Path.of(resource.toURI());
+                    lookup = SymbolLookup.libraryLookup(path, Native.arena);
+                    resourceLibrares.put(libraryName, lookup);
+                    return lookup;
+                } catch (URISyntaxException _) {
+                }
+            }
+            throw e;
+        }
+    }
+
     private static NativeLibrary loadLibrary(final String libraryName, final Map<String, ?> options) {
         LOG.log(DEBUG_LOAD_LEVEL, "Looking for library '" + libraryName + "'");
+
+//        SymbolLookup stdlib = Linker.nativeLinker().defaultLookup();
+        if (!jni) {
+            SymbolLookup symbolLookup = getSymbolLookup(libraryName);
+            return new NativeLibrary(libraryName, null, 0, options, symbolLookup);
+        }
 
         List<Throwable> exceptions = new ArrayList<>();
         boolean isAbsolutePath = new File(libraryName).isAbsolute();
@@ -331,7 +371,7 @@ public class NativeLibrary implements Closeable {
         }
 
         LOG.log(DEBUG_LOAD_LEVEL, "Found library '" + libraryName + "' at " + libraryPath);
-        return new NativeLibrary(libraryName, libraryPath, handle, options);
+        return new NativeLibrary(libraryName, libraryPath, handle, options, null);
     }
 
     private static Method addSuppressedMethod = null;
@@ -463,6 +503,7 @@ public class NativeLibrary implements Closeable {
             options.put(Library.OPTION_CALLING_CONVENTION, Integer.valueOf(Function.C_CONVENTION));
         }
 
+
         // Use current process to load libraries we know are already
         // loaded by the VM to ensure we get the correct version
         if ((Platform.isLinux() || Platform.isFreeBSD() || Platform.isAIX())
@@ -475,7 +516,8 @@ public class NativeLibrary implements Closeable {
 
             if (library == null) {
                 if (libraryName == null) {
-                    library = new NativeLibrary("<process>", null, Native.open(null, openFlags(options)), options);
+                    library = new NativeLibrary("<process>", null, Native.open(null, openFlags(options)), options,
+                            null);
                 }
                 else {
                     library = loadLibrary(libraryName, options);
@@ -634,7 +676,8 @@ public class NativeLibrary implements Closeable {
      */
     public Pointer getGlobalVariableAddress(String symbolName) {
         try {
-            return new Pointer(getSymbolAddress(symbolName));
+            // return new Pointer(getSymbolAddress(symbolName));
+            return null; // TODO
         } catch(UnsatisfiedLinkError e) {
             throw new UnsatisfiedLinkError("Error looking up '" + symbolName + "': " + e.getMessage());
         }
@@ -644,11 +687,18 @@ public class NativeLibrary implements Closeable {
      * Used by the Function class to locate a symbol
      * @throws UnsatisfiedLinkError if the symbol can't be found
      */
-    long getSymbolAddress(String name) {
+    MemorySegment getSymbolAddress(String name) {
+        if (!jni) {
+            Optional<MemorySegment> symbolAddress = symbolLookup.find(name);
+            if (symbolAddress.isPresent()) {
+                return symbolAddress.get();
+            }
+            throw new UnsatisfiedLinkError(this.libraryName + "." + name);
+        }
         if (handle == 0) {
             throw new UnsatisfiedLinkError("Library has been unloaded");
         }
-        return this.symbolProvider.getSymbolAddress(handle, name, NATIVE_SYMBOL_PROVIDER);
+        return null; // this.symbolProvider.getSymbolAddress(handle, name, NATIVE_SYMBOL_PROVIDER);
     }
 
     @Override

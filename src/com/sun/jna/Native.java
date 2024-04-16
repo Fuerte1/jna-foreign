@@ -33,6 +33,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.foreign.*;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
@@ -47,6 +48,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
@@ -63,8 +66,13 @@ import java.util.WeakHashMap;
 
 import com.sun.jna.Callback.UncaughtExceptionHandler;
 import com.sun.jna.Structure.FFIType;
+//import com.sun.jna.platform.win32.Kernel32Util;
+
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static java.lang.foreign.ValueLayout.*;
 
 /** Provides generation of invocation plumbing for a defined native
  * library interface.  Also provides various utilities for native operations.
@@ -217,24 +225,32 @@ public final class Native implements Version {
         return true;
     }
 
-    static {
-        loadNativeDispatchLibrary();
+    public static boolean jni = false;
 
-//        if (! isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
-//            String LS = System.lineSeparator();
-//            throw new Error(LS + LS
-//                            + "There is an incompatible JNA native library installed on this system" + LS
-//                            + "Expected: " + VERSION_NATIVE + LS
-//                            + "Found:    " + getNativeVersion() + LS
-//                            + (jnidispatchPath != null
-//                               ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
-//                            + "." + LS
-//                            + "To resolve this issue you may do one of the following:" + LS
-//                            + " - remove or uninstall the offending library" + LS
-//                            + " - set the system property jna.nosys=true" + LS
-//                            + " - set jna.boot.library.path to include the path to the version of the " + LS
-//                            + "   jnidispatch library included with the JNA jar file you are using" + LS);
-//        }
+    static Arena arena = Arena.global();
+
+    static ConcurrentHashMap<Long, MemorySegment> arenaMap = new ConcurrentHashMap<>();
+
+    static {
+        if (jni) {
+            loadNativeDispatchLibrary();
+
+            if (!isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
+                String LS = System.lineSeparator();
+                throw new Error(LS + LS
+                        + "There is an incompatible JNA native library installed on this system" + LS
+                        + "Expected: " + VERSION_NATIVE + LS
+                        + "Found:    " + getNativeVersion() + LS
+                        + (jnidispatchPath != null
+                        ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
+                        + "." + LS
+                        + "To resolve this issue you may do one of the following:" + LS
+                        + " - remove or uninstall the offending library" + LS
+                        + " - set the system property jna.nosys=true" + LS
+                        + " - set jna.boot.library.path to include the path to the version of the " + LS
+                        + "   jnidispatch library included with the JNA jar file you are using" + LS);
+            }
+        }
 
         POINTER_SIZE = sizeof(TYPE_VOIDP);
         LONG_SIZE = sizeof(TYPE_LONG);
@@ -304,7 +320,11 @@ public final class Native implements Version {
 
     private Native() { }
 
-    private static native void initIDs();
+//    private static native void initIDs();
+
+    private static void initIDs() {
+        FFIType.init();
+    }
 
     /** Set whether native memory accesses are protected from invalid
      * accesses.  This should only be set true when testing or debugging,
@@ -923,7 +943,7 @@ public final class Native implements Version {
     /**
      * @param s The string
      * @return A NUL-terminated wide character buffer equivalent to the given string.
-    */
+     */
     public static char[] toCharArray(String s) {
         char[] chars = s.toCharArray();
         char[] buf = new char[chars.length+1];
@@ -1196,7 +1216,17 @@ public final class Native implements Version {
      * Initialize field and method IDs for native methods of this class.
      * Returns the size of a native pointer.
      **/
-    private static native int sizeof(int type);
+//    private static native int sizeof(int type);
+    private static int sizeof(int type) {
+        return
+                switch (type) {
+                    case TYPE_VOIDP, TYPE_SIZE_T, TYPE_LONG_DOUBLE -> (int)ADDRESS.byteSize();
+                    case TYPE_LONG -> (int)JAVA_LONG.byteSize();
+                    case TYPE_WCHAR_T -> (int)JAVA_CHAR.byteSize();
+                    case TYPE_BOOL -> 1; // TODO ???
+                    default -> throw new IllegalArgumentException("sizeof " + type);
+                };
+    }
 
     private static native String getNativeVersion();
     private static native String getAPIChecksum();
@@ -1214,7 +1244,21 @@ public final class Native implements Version {
      * error value is non-zero after the call, regardless of the actual
      * returned value from the native function.</p>
      */
-    public static native int getLastError();
+//    public static native int getLastError();
+    public static int getLastError() {
+        try {
+            return (int) ffGetLastError.get().invoke();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static ForeignFunction ffGetLastError = new ForeignFunction(() ->
+            NativeLibrary.getSymbolLookup("kernel32"),
+            "GetLastError",
+            FunctionDescriptor.of(
+                    JAVA_INT // error code, 0 = success
+            ));
 
     /** Set the OS last error code.  The value will be saved on a per-thread
      * basis.
@@ -1252,6 +1296,19 @@ public final class Native implements Version {
         return (Library)Proxy.newProxyInstance(cls.getClassLoader(),
                                                cls.getInterfaces(),
                                                newHandler);
+    }
+
+    public static SymbolLookup getSymbolLookup(final Library library) {
+        Class<?> cls = library.getClass();
+        if (!Proxy.isProxyClass(cls)) {
+            throw new IllegalArgumentException("Library must be a proxy class");
+        }
+        InvocationHandler ih = Proxy.getInvocationHandler(library);
+        if (!(ih instanceof Library.Handler)) {
+            throw new IllegalArgumentException("Unrecognized proxy handler: " + ih);
+        }
+        final Library.Handler handler = (Library.Handler)ih;
+        return handler.getNativeLibrary().getSymbolLookup();
     }
 
     /** If running web start, determine the location of a given native
@@ -1945,7 +2002,23 @@ public final class Native implements Version {
         return libOptions;
     }
 
-    private static native long registerMethod(Class<?> cls,
+//    private static native long registerMethod(Class<?> cls,
+//                                              String name,
+//                                              String signature,
+//                                              int[] conversions,
+//                                              long[] closure_arg_types,
+//                                              long[] arg_types,
+//                                              int rconversion,
+//                                              long closure_rtype,
+//                                              long rtype,
+//                                              Method method,
+//                                              long fptr,
+//                                              int callingConvention,
+//                                              boolean throwLastError,
+//                                              ToNativeConverter[] toNative,
+//                                              FromNativeConverter fromNative,
+//                                              String encoding);
+    private static long registerMethod(Class<?> cls,
                                               String name,
                                               String signature,
                                               int[] conversions,
@@ -1960,8 +2033,14 @@ public final class Native implements Version {
                                               boolean throwLastError,
                                               ToNativeConverter[] toNative,
                                               FromNativeConverter fromNative,
-                                              String encoding);
-
+                                              String encoding) {
+        LOG.log(Level.INFO,
+                "registerMethod {0}", Arrays.toString(new Object[]{
+                        cls, name, signature,
+                        conversions, closure_arg_types, arg_types, rconversion, closure_rtype, rtype, method,
+                        fptr, callingConvention, throwLastError, toNative, fromNative, encoding}));
+        return 0;
+    }
 
     // Called from native code
     private static NativeMapped fromNative(Class<?> cls, Object value) {
@@ -1981,7 +2060,7 @@ public final class Native implements Version {
     private static Object toNative(ToNativeConverter cvt, Object o) {
         // NOTE: technically should be either CallbackResultContext or
         // FunctionParameterContext
-        return cvt.toNative(o, new ToNativeContext());
+        return cvt.toNative(o, new ToNativeContext(Arena.ofAuto()));
     }
     // Called from native code
     private static Object fromNative(FromNativeConverter cvt, Object o, Method m) {
@@ -2298,9 +2377,36 @@ public final class Native implements Version {
 
     static native void setDouble(Pointer pointer, long baseaddr, long offset, double value);
 
-    static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
+//    static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
 
-    static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
+    static void setPointer(Pointer pointer, long baseaddr, long offset, long value) {
+        MemorySegment segment = arenaMap.get(baseaddr);
+        if (segment == null) {
+            throw new IllegalArgumentException("baseaddr=" + baseaddr + " is not a valid");
+        }
+        segment.setAtIndex(JAVA_LONG, offset, value);
+    }
+
+//    static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
+
+    static void setWideString(Pointer pointer, long baseaddr, long offset, String value) {
+        MemorySegment segment = arenaMap.get(baseaddr);
+        if (segment == null) {
+            throw new IllegalArgumentException("baseaddr is invalid: " + baseaddr);
+        }
+//        segment.setString(offset, value); // TODO: wide string ???
+        segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().put(value).put('\0');
+    }
+
+    public static String fromWideString(MemorySegment wide) {
+        CharBuffer charBuffer = wide.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer();
+        int limit = 0; // check for zero termination
+        int end = charBuffer.limit();
+        while (limit < end && charBuffer.get(limit) != 0) {
+            limit++;
+        }
+        return charBuffer.limit(limit).toString();
+    }
 
     static native ByteBuffer getDirectByteBuffer(Pointer pointer, long addr, long offset, long length);
 
@@ -2310,14 +2416,29 @@ public final class Native implements Version {
      * @return native address of the allocated memory block; zero if the
      * allocation failed.
      */
-    public static native long malloc(long size);
+//    public static native long malloc(long size);
+
+    @Deprecated
+    public static long malloc(long size) {
+        MemorySegment segment = arena.allocate(size);
+        long address = segment.address();
+        arenaMap.put(address, segment);
+        return address;
+    }
 
     /**
      * Call the real native free
      * @param ptr native address to be freed; a value of zero has no effect,
      * passing an already-freed pointer will cause pain.
      */
-    public static native void free(long ptr);
+//    public static native void free(long ptr);
+
+    public static void free(long ptr) {
+        MemorySegment segment = arenaMap.remove(ptr);
+        if (segment != null) {
+            segment.unload();;
+        }
+    }
 
     private static final ThreadLocal<Memory> nativeThreadTerminationFlag =
         new ThreadLocal<Memory>() {

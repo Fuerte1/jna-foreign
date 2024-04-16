@@ -33,7 +33,8 @@ public class StructureWriteContext extends ToNativeContext {
     private Structure struct;
     private Field field;
 
-    StructureWriteContext(Structure struct, Field field) {
+    StructureWriteContext(java.lang.foreign.Arena arena, Structure struct, Field field) {
+        super(arena);
         this.struct = struct;
         this.field = field;
     }

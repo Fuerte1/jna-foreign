@@ -25,6 +25,7 @@ package com.sun.jna;
 
 import com.sun.jna.internal.Cleaner;
 import java.io.Closeable;
+import java.lang.foreign.Arena;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationHandler;
@@ -664,7 +665,7 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
 
         private Object convertResult(Object value) {
             if (toNative != null) {
-                value = toNative.toNative(value, new CallbackResultContext(callbackMethod));
+                value = toNative.toNative(value, new CallbackResultContext(Arena.ofAuto(), callbackMethod));
             }
             if (value == null) {
                 return null;

@@ -25,12 +25,15 @@
 package com.sun.jna;
 
 
+import java.lang.foreign.Arena;
+
 public class FunctionParameterContext extends ToNativeContext {
     private Function function;
     private Object[] args;
     private int index;
 
-    FunctionParameterContext(Function f, Object[] args, int index) {
+    FunctionParameterContext(Arena arena, Function f, Object[] args, int index) {
+        super(arena);
         this.function = f;
         this.args = args;
         this.index = index;

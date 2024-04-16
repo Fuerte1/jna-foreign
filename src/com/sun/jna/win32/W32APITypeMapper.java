@@ -31,6 +31,8 @@ import com.sun.jna.TypeConverter;
 import com.sun.jna.TypeMapper;
 import com.sun.jna.WString;
 
+import java.nio.charset.StandardCharsets;
+
 /** Provide standard conversion for W32 API types.  This comprises the
  * following native types:
  * <ul>
@@ -58,6 +60,7 @@ public class W32APITypeMapper extends DefaultTypeMapper {
                         return new StringArray((String[])value, true);
                     }
                     return new WString(value.toString());
+//                    return context.arena.allocateFrom(value.toString(), StandardCharsets.UTF_16LE);
                 }
                 @Override
                 public Object fromNative(Object value, FromNativeContext context) {

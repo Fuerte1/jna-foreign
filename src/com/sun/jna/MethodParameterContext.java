@@ -24,13 +24,14 @@
 
 package com.sun.jna;
 
+import java.lang.foreign.Arena;
 import java.lang.reflect.Method;
 
 public class MethodParameterContext extends FunctionParameterContext {
     private Method method;
 
-    MethodParameterContext(Function f, Object[] args, int index, Method m) {
-        super(f, args, index);
+    MethodParameterContext(Arena arena, Function f, Object[] args, int index, Method m) {
+        super(arena, f, args, index);
         this.method = m;
     }
     /** Get the Method in the Library instance the Function was called from. */

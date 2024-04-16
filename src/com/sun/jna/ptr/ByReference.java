@@ -23,6 +23,7 @@
  */
 package com.sun.jna.ptr;
 
+import java.lang.foreign.Arena;
 import java.lang.reflect.Method;
 
 import com.sun.jna.Memory;
@@ -53,23 +54,30 @@ public abstract class ByReference extends PointerType {
      *            <code>setValue(&lt;T&gt;)</code> and
      *            <code>&lt;T&gt; getValue()</code> methods.
      */
+    @Deprecated
     protected ByReference(int dataSize) {
         setPointer(new Memory(dataSize));
     }
 
-    @Override
-    public String toString() {
-        try {
-            Method getValue = getClass().getMethod("getValue");
-            Object value = getValue.invoke(this);
-            if (value == null) {
-                return String.format("null@0x%x", Pointer.nativeValue(getPointer()));
-            }
-            return String.format("%s@0x%x=%s", value.getClass().getSimpleName(), Pointer.nativeValue(getPointer()),
-                    value);
-        } catch (Exception ex) {
-            return String.format("ByReference Contract violated - %s#getValue raised exception: %s",
-                    getClass().getName(), ex.getMessage());
-        }
+    protected ByReference(Arena arena, int dataSize) {
+        setPointer(new Memory(arena, dataSize));
     }
+
+    // crashes in debugger
+//    @Override
+//    public String toString() {
+//        try {
+//            Method getValue = getClass().getMethod("getValue");
+//            Object value = getValue.invoke(this);
+//            if (value == null) {
+//                return String.format("null@0x%x", Pointer.nativeValue(getPointer()));
+//            }
+//            return String.format("%s@0x%x=%s", value.getClass().getSimpleName(), Pointer.nativeValue(getPointer()),
+//                    value);
+//        } catch (Exception ex) {
+//            return String.format("ByReference Contract violated - %s#getValue raised exception: %s",
+//                    getClass().getName(), ex.getMessage());
+//        }
+//    }
+
 }
