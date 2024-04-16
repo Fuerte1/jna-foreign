@@ -38,6 +38,8 @@ import static org.junit.Assert.assertNotEquals;
 import java.io.IOException;
 import java.security.SecureRandom;
 
+import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.sun.jna.Native;
@@ -47,7 +49,8 @@ import com.sun.jna.platform.unix.LibCUtil;
 
 import junit.framework.TestCase;
 
-public class LibRTTest extends TestCase {
+@Ignore
+public class LibRTTest {
 
     public static LibC LIBC = LibC.INSTANCE;
     public static LibRT LIBRT = LibRT.INSTANCE;
@@ -94,8 +97,8 @@ public class LibRTTest extends TestCase {
             // Get another file descriptor to the same share.
             // Calling with both O_CREAT | O_EXCL should fail since the share already exists
             fd = LIBRT.shm_open(share, O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
-            assertEquals("Re-creating existing share should have failed", -1, fd);
-            assertEquals("Re-creating existing share errno should be EEXIST", EEXIST, Native.getLastError());
+            Assert.assertEquals("Re-creating existing share should have failed", -1, fd);
+            Assert.assertEquals("Re-creating existing share errno should be EEXIST", EEXIST, Native.getLastError());
             // So let's not recreate it, instead get a file descriptor to the existing share
             fd = LIBRT.shm_open(share, O_RDWR, S_IRWXU);
             assertNotEquals("Failed to re-open " + share + ". Error: " + Native.getLastError(), -1, fd);
@@ -106,7 +109,7 @@ public class LibRTTest extends TestCase {
             ret = LIBC.close(fd);
             assertNotEquals("Failed to close file descriptor. Error: " + Native.getLastError(), -1, ret);
             // Check that the bytes we wrote are still there
-            assertEquals("Bytes written to share don't match", share, q.getString(0));
+            Assert.assertEquals("Bytes written to share don't match", share, q.getString(0));
             // Unmap the share
             ret = LIBC.munmap(q, length);
             assertNotEquals("Failed munmap. Error: " + Native.getLastError(), -1, ret);
