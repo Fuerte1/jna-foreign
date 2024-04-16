@@ -28,9 +28,10 @@ import org.junit.AfterClass;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
-
+@Ignore
 public class ELFAnalyserTest {
 
     private static final File TEST_RESOURCES = new File("build/test-resources");

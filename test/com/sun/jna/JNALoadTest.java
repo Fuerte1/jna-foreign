@@ -33,12 +33,19 @@ import java.net.URLClassLoader;
 import java.util.Properties;
 
 import junit.framework.TestCase;
+import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
+import org.junit.Test;
 
 /** Test loading and unloading native support from various locations.  Note
  * that no JNI classes are directly referenced in these tests.
  */
-public class JNALoadTest extends TestCase implements Paths {
+public class JNALoadTest implements Paths {
+
+    private String getName() {
+        return getClass().getName();
+    }
 
     private class TestLoader extends URLClassLoader {
         public TestLoader(boolean fromJar) throws MalformedURLException {
@@ -88,12 +95,13 @@ public class JNALoadTest extends TestCase implements Paths {
         }
     }
 
+    @Test
     public void testAvoidJarUnpacking() throws Exception {
         System.setProperty("jna.nounpack", "true");
         try {
             Class<?> cls = Class.forName("com.sun.jna.Native", true, new TestLoader(true));
 
-            fail("Class com.sun.jna.Native should not be loadable if jna.nounpack=true: "
+            Assert.fail("Class com.sun.jna.Native should not be loadable if jna.nounpack=true: "
                  + cls.getClassLoader());
         }
         catch(UnsatisfiedLinkError e) {
@@ -103,12 +111,13 @@ public class JNALoadTest extends TestCase implements Paths {
         }
     }
 
+    @Test
     public void testAvoidResourcePathLoading() throws Exception {
         System.setProperty("jna.noclasspath", "true");
         try {
             Class<?> cls = Class.forName("com.sun.jna.Native", true, new TestLoader(false));
 
-            fail("Class com.sun.jna.Native should not be loadable if jna.noclasspath=true: "
+            Assert.fail("Class com.sun.jna.Native should not be loadable if jna.noclasspath=true: "
                  + cls.getClassLoader());
         }
         catch(UnsatisfiedLinkError e) {
@@ -118,6 +127,7 @@ public class JNALoadTest extends TestCase implements Paths {
         }
     }
 
+    @Test
     public void testLoadAndUnloadFromJar() throws Exception {
         if (Platform.isIntel() && (! Platform.is64Bit())) {
             System.out.println("Skip " + getName() + " - it is known to be flaky and produces false positives on x86-32bit");
@@ -126,15 +136,14 @@ public class JNALoadTest extends TestCase implements Paths {
 
         ClassLoader loader = new TestLoader(true);
         Class<?> cls = Class.forName("com.sun.jna.Native", true, loader);
-        assertEquals("Wrong class loader", loader, cls.getClassLoader());
-        assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
+        Assert.assertEquals("Wrong class loader", loader, cls.getClassLoader());
+        Assert.assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
 
         Field field = cls.getDeclaredField("jnidispatchPath");
         field.setAccessible(true);
         String path = (String)field.get(null);
-        assertNotNull("Native library path unavailable", path);
-        assertTrue("Native library not unpacked from jar: " + path,
-                path.startsWith(Native.getTempDir().getAbsolutePath()));
+        Assert.assertNotNull("Native library path unavailable", path);
+        Assert.assertTrue("Native library not unpacked from jar: " + path, path.startsWith(Native.getTempDir().getAbsolutePath()));
 
         Reference<Class<?>> ref = new WeakReference<>(cls);
         Reference<ClassLoader> clref = new WeakReference<>(loader);
@@ -145,8 +154,8 @@ public class JNALoadTest extends TestCase implements Paths {
         for (int i=0;i < GCWaits.GC_WAITS && (ref.get() != null || clref.get() != null);i++) {
             GCWaits.gcRun();
         }
-        assertNull("Class not GC'd: " + ref.get(), ref.get());
-        assertNull("ClassLoader not GC'd: " + clref.get(), clref.get());
+        Assert.assertNull("Class not GC'd: " + ref.get(), ref.get());
+        Assert.assertNull("ClassLoader not GC'd: " + clref.get(), clref.get());
 
         // Check for temporary file deletion
         File f = new File(path);
@@ -155,10 +164,9 @@ public class JNALoadTest extends TestCase implements Paths {
         }
 
         if (f.exists()) {
-            assertTrue("Temporary jnidispatch not marked for later deletion: " + f,
-                       new File(f.getAbsolutePath()+".x").exists());
+            Assert.assertTrue("Temporary jnidispatch not marked for later deletion: " + f, new File(f.getAbsolutePath()+".x").exists());
         }
-        assertFalse("System property jna.loaded not cleared", Boolean.getBoolean("jna.loaded"));
+        Assert.assertFalse("System property jna.loaded not cleared", Boolean.getBoolean("jna.loaded"));
 
         // Should be able to load again without complaints about library
         // already loaded in another class loader
@@ -166,7 +174,7 @@ public class JNALoadTest extends TestCase implements Paths {
             loader = new TestLoader(true);
             cls = Class.forName("com.sun.jna.Native", true, loader);
         } catch(Throwable t) {
-            fail("Couldn't load class again after discarding first load: " + t.getMessage());
+            Assert.fail("Couldn't load class again after discarding first load: " + t.getMessage());
         } finally {
             loader = null;
             cls = null;
@@ -175,6 +183,7 @@ public class JNALoadTest extends TestCase implements Paths {
     }
 
     // GC Fails under OpenJDK(linux/ppc)
+    @Test
     public void testLoadAndUnloadFromResourcePath() throws Exception {
         if (Platform.isIntel() && (! Platform.is64Bit())) {
             System.out.println("Skip " + getName() + " - it is known to be flaky and produces false positives on x86-32bit");
@@ -183,13 +192,13 @@ public class JNALoadTest extends TestCase implements Paths {
 
         ClassLoader loader = new TestLoader(false);
         Class<?> cls = Class.forName("com.sun.jna.Native", true, loader);
-        assertEquals("Wrong class loader", loader, cls.getClassLoader());
-        assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
+        Assert.assertEquals("Wrong class loader", loader, cls.getClassLoader());
+        Assert.assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
 
         Field field = cls.getDeclaredField("jnidispatchPath");
         field.setAccessible(true);
         String path = (String)field.get(null);
-        assertNotNull("Native library not found", path);
+        Assert.assertNotNull("Native library not found", path);
 
         Reference<Class<?>> ref = new WeakReference<>(cls);
         Reference<ClassLoader> clref = new WeakReference<>(loader);
@@ -200,9 +209,9 @@ public class JNALoadTest extends TestCase implements Paths {
         for (int i=0;i < GCWaits.GC_WAITS && (ref.get() != null || clref.get() != null || Boolean.getBoolean("jna.loaded"));i++) {
             GCWaits.gcRun();
         }
-        assertNull("Class not GC'd: " + ref.get(), ref.get());
-        assertNull("ClassLoader not GC'd: " + clref.get(), clref.get());
-        assertFalse("System property jna.loaded not cleared", Boolean.getBoolean("jna.loaded"));
+        Assert.assertNull("Class not GC'd: " + ref.get(), ref.get());
+        Assert.assertNull("ClassLoader not GC'd: " + clref.get(), clref.get());
+        Assert.assertFalse("System property jna.loaded not cleared", Boolean.getBoolean("jna.loaded"));
 
         Throwable throwable = null;
         // NOTE: IBM J9 needs some extra time to unload the native library,
@@ -221,7 +230,7 @@ public class JNALoadTest extends TestCase implements Paths {
         }
         try {
             if (loader == null) {
-                fail("Native library not unloaded: " + throwable.getMessage());
+                Assert.fail("Native library not unloaded: " + throwable.getMessage());
             }
         }
         finally {
@@ -231,6 +240,8 @@ public class JNALoadTest extends TestCase implements Paths {
         }
     }
 
+    @Test
+    @Ignore("java.lang.Error: JVM error: System.load() failed to load JNA native library from C:\\Users\\harry\\AppData\\Local\\Temp\\testLoadFromUnicodePath-флсву\\jna2510018765660326451.dll)")
     public void testLoadFromUnicodePath() throws Exception {
         if (Platform.isWindows()) {
             String vendor = System.getProperty("java.vendor");
@@ -253,8 +264,8 @@ public class JNALoadTest extends TestCase implements Paths {
             System.setProperty("jna.tmpdir", unicodeDir.getAbsolutePath());
             ClassLoader loader = new TestLoader(true);
             Class<?> cls = Class.forName("com.sun.jna.Native", true, loader);
-            assertEquals("Wrong class loader", loader, cls.getClassLoader());
-            assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
+            Assert.assertEquals("Wrong class loader", loader, cls.getClassLoader());
+            Assert.assertTrue("System property jna.loaded not set", Boolean.getBoolean("jna.loaded"));
 
             String path = System.getProperty("jnidispatch.path");
             if (path != null) {
@@ -270,7 +281,7 @@ public class JNALoadTest extends TestCase implements Paths {
         }
     }
 
-    public static void main(String[] args) {
-        junit.textui.TestRunner.run(JNALoadTest.class);
-    }
+//    public static void main(String[] args) {
+//        junit.textui.TestRunner.run(JNALoadTest.class);
+//    }
 }

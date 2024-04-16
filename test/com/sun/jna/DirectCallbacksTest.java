@@ -88,7 +88,7 @@ public class DirectCallbacksTest extends CallbacksTest {
     }
 
     @Override
-    protected void setUp() {
+    public void setUp() {
         lib = new DirectTestLibrary();
     }
 
@@ -120,7 +120,7 @@ public class DirectCallbacksTest extends CallbacksTest {
     @Override
     public void testCallbackExceptionHandlerWithCallbackProxy() { }
 
-    public static void main(java.lang.String[] argList) {
-        junit.textui.TestRunner.run(DirectCallbacksTest.class);
-    }
+//    public static void main(java.lang.String[] argList) {
+//        junit.textui.TestRunner.run(DirectCallbacksTest.class);
+//    }
 }

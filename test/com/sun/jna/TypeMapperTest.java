@@ -28,9 +28,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
+import org.junit.Assert;
+import org.junit.Test;
 
 //@SuppressWarnings("unused")
-public class TypeMapperTest extends TestCase {
+public class TypeMapperTest {
 
     private static final String UNICODE = "[\0444]";
 
@@ -42,6 +44,7 @@ public class TypeMapperTest extends TestCase {
         String returnWStringArgument(WString s);
     }
 
+    @Test
     public void testBooleanToIntArgumentConversion() {
         final int MAGIC = 0xABEDCF23;
         DefaultTypeMapper mapper = new DefaultTypeMapper();
@@ -56,8 +59,10 @@ public class TypeMapperTest extends TestCase {
             }
         });
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert Boolean argument to Int", MAGIC, lib.returnInt32Argument(true));
+        Assert.assertEquals("Failed to convert Boolean argument to Int", MAGIC, lib.returnInt32Argument(true));
     }
+
+    @Test
     public void testStringToIntArgumentConversion() {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         mapper.addToNativeConverter(String.class, new ToNativeConverter() {
@@ -72,9 +77,10 @@ public class TypeMapperTest extends TestCase {
         });
         final int MAGIC = 0x7BEDCF23;
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert String argument to Int", MAGIC,
-                     lib.returnInt32Argument(Integer.toHexString(MAGIC)));
+        Assert.assertEquals("Failed to convert String argument to Int", MAGIC, lib.returnInt32Argument(Integer.toHexString(MAGIC)));
     }
+
+    @Test
     public void testStringToWStringArgumentConversion() {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         mapper.addToNativeConverter(String.class, new ToNativeConverter() {
@@ -89,9 +95,10 @@ public class TypeMapperTest extends TestCase {
         });
         final String MAGIC = "magic" + UNICODE;
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert String argument to WString", new WString(MAGIC),
-                     lib.returnWStringArgument(MAGIC));
+        Assert.assertEquals("Failed to convert String argument to WString", new WString(MAGIC), lib.returnWStringArgument(MAGIC));
     }
+
+    @Test
     public void testCharSequenceToIntArgumentConversion() {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         mapper.addToNativeConverter(CharSequence.class, new ToNativeConverter() {
@@ -106,8 +113,10 @@ public class TypeMapperTest extends TestCase {
         });
         final int MAGIC = 0x7BEDCF23;
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert String argument to Int", MAGIC, lib.returnInt32Argument(Integer.toHexString(MAGIC)));
+        Assert.assertEquals("Failed to convert String argument to Int", MAGIC, lib.returnInt32Argument(Integer.toHexString(MAGIC)));
     }
+
+    @Test
     public void testNumberToIntArgumentConversion() {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         mapper.addToNativeConverter(Double.class, new ToNativeConverter() {
@@ -123,9 +132,10 @@ public class TypeMapperTest extends TestCase {
 
         final int MAGIC = 0x7BEDCF23;
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert Double argument to Int", MAGIC,
-                     lib.returnInt32Argument(Double.valueOf(MAGIC)));
+        Assert.assertEquals("Failed to convert Double argument to Int", MAGIC, lib.returnInt32Argument(Double.valueOf(MAGIC)));
     }
+
+    @Test
     public void testWStringToStringResultConversion() throws Exception {
         final String MAGIC = "magic" + UNICODE;
         DefaultTypeMapper mapper = new DefaultTypeMapper();
@@ -143,12 +153,14 @@ public class TypeMapperTest extends TestCase {
             }
         });
         TestLibrary lib = Native.load("testlib", TestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert WString result to String", MAGIC, lib.returnWStringArgument(new WString(MAGIC)));
+        Assert.assertEquals("Failed to convert WString result to String", MAGIC, lib.returnWStringArgument(new WString(MAGIC)));
     }
 
     public static interface BooleanTestLibrary extends Library {
         boolean returnInt32Argument(boolean b);
     }
+
+    @Test
     public void testIntegerToBooleanResultConversion() throws Exception {
         final int MAGIC = 0xABEDCF23;
         DefaultTypeMapper mapper = new DefaultTypeMapper();
@@ -173,8 +185,8 @@ public class TypeMapperTest extends TestCase {
             }
         });
         BooleanTestLibrary lib = Native.load("testlib", BooleanTestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Failed to convert integer return to boolean TRUE", true, lib.returnInt32Argument(true));
-        assertEquals("Failed to convert integer return to boolean FALSE", false, lib.returnInt32Argument(false));
+        Assert.assertEquals("Failed to convert integer return to boolean TRUE", true, lib.returnInt32Argument(true));
+        Assert.assertEquals("Failed to convert integer return to boolean FALSE", false, lib.returnInt32Argument(false));
     }
 
     public static interface StructureTestLibrary extends Library {
@@ -189,6 +201,8 @@ public class TypeMapperTest extends TestCase {
             }
         }
     }
+
+    @Test
     public void testStructureConversion() throws Exception {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         TypeConverter converter = new TypeConverter() {
@@ -208,15 +222,15 @@ public class TypeMapperTest extends TestCase {
         mapper.addTypeConverter(Boolean.class, converter);
         Native.load("testlib", StructureTestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
         StructureTestLibrary.TestStructure s = new StructureTestLibrary.TestStructure(mapper);
-        assertEquals("Wrong native size", 4, s.size());
+        Assert.assertEquals("Wrong native size", 4, s.size());
 
         s.data = true;
         s.write();
-        assertEquals("Wrong value written", 1, s.getPointer().getInt(0));
+        Assert.assertEquals("Wrong value written", 1, s.getPointer().getInt(0));
 
         s.getPointer().setInt(0, 0);
         s.read();
-        assertFalse("Wrong value read", s.data);
+        Assert.assertFalse("Wrong value read", s.data);
     }
 
     public static enum Enumeration {
@@ -246,6 +260,7 @@ public class TypeMapperTest extends TestCase {
         MinTestStructure testStructurePointerArgument(MinTestStructure s);
     }
 
+    @Test
     public void testEnumConversion() throws Exception {
         DefaultTypeMapper mapper = new DefaultTypeMapper();
         TypeConverter converter = new TypeConverter() {
@@ -271,16 +286,16 @@ public class TypeMapperTest extends TestCase {
 
         mapper.addTypeConverter(Enumeration.class, converter);
         EnumerationTestLibrary lib = Native.load("testlib", EnumerationTestLibrary.class, Collections.singletonMap(Library.OPTION_TYPE_MAPPER, mapper));
-        assertEquals("Enumeration improperly converted", Enumeration.STATUS_0, lib.returnInt32Argument(Enumeration.STATUS_0));
-        assertEquals("Enumeration improperly converted", Enumeration.STATUS_1, lib.returnInt32Argument(Enumeration.STATUS_1));
+        Assert.assertEquals("Enumeration improperly converted", Enumeration.STATUS_0, lib.returnInt32Argument(Enumeration.STATUS_0));
+        Assert.assertEquals("Enumeration improperly converted", Enumeration.STATUS_1, lib.returnInt32Argument(Enumeration.STATUS_1));
         EnumerationTestLibrary.MinTestStructure struct = new EnumerationTestLibrary.MinTestStructure();
         struct.field = Enumeration.STATUS_0;
-        assertEquals("Enumeration in structure improperly converted", Enumeration.STATUS_0, lib.testStructurePointerArgument(struct).field);
+        Assert.assertEquals("Enumeration in structure improperly converted", Enumeration.STATUS_0, lib.testStructurePointerArgument(struct).field);
         struct.field = Enumeration.STATUS_1;
-        assertEquals("Enumeration in structure improperly converted", Enumeration.STATUS_1, lib.testStructurePointerArgument(struct).field);
+        Assert.assertEquals("Enumeration in structure improperly converted", Enumeration.STATUS_1, lib.testStructurePointerArgument(struct).field);
     }
 
-    public static void main(String[] args) {
-        junit.textui.TestRunner.run(TypeMapperTest.class);
-    }
+//    public static void main(String[] args) {
+//        junit.textui.TestRunner.run(TypeMapperTest.class);
+//    }
 }
