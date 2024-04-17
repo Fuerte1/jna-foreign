@@ -90,7 +90,7 @@ public class DirectReturnTypesTest extends ReturnTypesTest {
         public WString[] returnPointerArgument(WString[] arg) {throw new UnsupportedOperationException();}
 
         static {
-            Native.register("testlib");
+            Native.register("testlib", true);
         }
     }
 
@@ -104,7 +104,8 @@ public class DirectReturnTypesTest extends ReturnTypesTest {
 
         static {
             Native.register(NativeLibrary.getInstance("testlib",
-                    Collections.singletonMap(Library.OPTION_ALLOW_OBJECTS, Boolean.TRUE)));
+                    Collections.singletonMap(Library.OPTION_ALLOW_OBJECTS, Boolean.TRUE),
+                    true));
         }
     }
 
@@ -117,7 +118,7 @@ public class DirectReturnTypesTest extends ReturnTypesTest {
         public native size_t returnInt64Magic();
 
         static {
-            Native.register("testlib");
+            Native.register("testlib", true);
         }
     }
 

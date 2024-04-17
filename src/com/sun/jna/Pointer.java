@@ -27,7 +27,6 @@ import com.sun.jna.ptr.MemorySegmentReference;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Array;
 import java.nio.*;
@@ -156,6 +155,10 @@ public class Pointer extends MemorySegmentReference {
 
     private long getOffset() {
         return peer - segment.address(); // normally +0
+    }
+
+    public int getOffset(long offset) {
+        return (int) (offset + getOffset());
     }
 
     /**
@@ -299,7 +302,9 @@ public class Pointer extends MemorySegmentReference {
      */
     public void write(long offset, byte[] buf, int index, int length) {
 //        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().put(index, buf, (int) offset, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .put(0, buf, index, length);
     }
 
     /**
@@ -313,7 +318,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, short[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asShortBuffer().put(0, buf, index, length);
     }
 
     /**
@@ -327,7 +335,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, char[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asCharBuffer().put(0, buf, index, length);
     }
 
     /**
@@ -341,7 +352,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, int[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asIntBuffer().put(0, buf, index, length);
     }
 
     /**
@@ -355,7 +369,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, long[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asLongBuffer().put(0, buf, index, length);
     }
 
     /**
@@ -369,7 +386,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, float[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asFloatBuffer().put(0, buf, index, length);
     }
 
     /**
@@ -383,7 +403,10 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, double[] buf, int index, int length) {
-        Native.write(this, this.peer, offset, buf, index, length);
+//        Native.write(this, this.peer, offset, buf, index, length);
+        segment.asByteBuffer()
+                .position(getOffset(offset))
+                .asDoubleBuffer().put(0, buf, index, length);
     }
 
     /** Write the given array of Pointer to native memory.
@@ -699,11 +722,18 @@ public class Pointer extends MemorySegmentReference {
      */
     public Pointer getPointer(long offset) {
 //        return Native.getPointer(peer + offset);
-        MemorySegment segment1 = segment.get(
-                ADDRESS.withTargetLayout(
-                        MemoryLayout.sequenceLayout(1024 * 1024, JAVA_BYTE)),
-                0);
-        return new Pointer(arena, segment1);
+        MemorySegment segment1 = segment
+                .reinterpret(1024 * 1024)
+                .get(ADDRESS
+//                        .withTargetLayout(
+//                                MemoryLayout.sequenceLayout(1024 * 1024, JAVA_BYTE))
+                        ,
+                offset);
+        long address = segment1.address();
+        if (address == 0) {
+            return null;
+        }
+        return new Pointer(arena, segment1.reinterpret(1024 * 1024), address);
     }
 
     /**

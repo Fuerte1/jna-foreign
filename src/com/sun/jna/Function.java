@@ -28,6 +28,7 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,6 +61,8 @@ import static java.lang.foreign.ValueLayout.*;
 public class Function extends Pointer {
     private final MemorySegment symbolAddress;
     private MethodHandle downcallHandle;
+    private Class<?> lastReturnType; // some functions are called with different parameters and return types
+    private java.util.function.Function<Object,Object> resultConverter;
 
     /** Any argument which implements this interface will have the
      * {@link #read} method called immediately after function invocation.
@@ -260,7 +263,11 @@ public class Function extends Pointer {
         this.options = library.getOptions();
         this.encoding = encoding != null ? encoding : Native.getDefaultStringEncoding();
         this.peer = 0;
-        this.symbolAddress = library.getSymbolAddress(functionName);
+        if (library.getSymbolLookup() != null) {
+            this.symbolAddress = library.getSymbolAddress(functionName);
+        } else {
+            this.symbolAddress = null;
+        }
 //        try {
 //        } catch(UnsatisfiedLinkError e) {
 //            throw new UnsatisfiedLinkError("Error looking up function '"
@@ -433,14 +440,17 @@ public class Function extends Pointer {
 //        Object result = null;
         int callFlags = this.callFlags | ((fixedArgs & USE_VARARGS) << USE_VARARGS_SHIFT);
         MemoryLayout resLayout;
-        if (this.downcallHandle == null) {
+        if (this.downcallHandle == null || this.lastReturnType != returnType) {
+            lastReturnType = returnType;
             if (returnType == null || returnType == void.class || returnType == Void.class) {
 //                Native.invokeVoid(this, this.peer, callFlags, args);
 //                result = null;
                 resLayout = null;
+//                resultConverter = _ -> null;
             } else if (returnType == boolean.class || returnType == Boolean.class) {
 //                result = valueOf(Native.invokeInt(this, this.peer, callFlags, args) != 0);
                 resLayout = JAVA_BOOLEAN;
+//                resultConverter = o -> Boolean.valueOf(String.valueOf(o));
             } else if (returnType == byte.class || returnType == Byte.class) {
 //                result = Byte.valueOf((byte) Native.invokeInt(this, this.peer, callFlags, args));
                 resLayout = JAVA_BYTE;
@@ -465,69 +475,163 @@ public class Function extends Pointer {
             } else if (returnType == String.class) {
 //                result = invokeString(callFlags, args, false);
                 resLayout = ADDRESS; // TODO
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            return seg
+                                    .reinterpret(1024 * 1024)
+                                    .getString(0, Charset.defaultCharset()); // TODO
+                        }
+                    }
+                    return null;
+                };
             } else if (returnType == WString.class) {
 //                String s = invokeString(callFlags, args, true);
 //                if (s != null) {
 //                    result = new WString(s);
 //                }
                 resLayout = ADDRESS; // TODO
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            String s = seg
+                                    .reinterpret(1024 * 1024)
+                                    .getString(0, StandardCharsets.UTF_16LE);
+                            if (s != null) {
+                                return new WString(s);
+                            }
+                        }
+                    }
+                    return null;
+                };
             } else if (Pointer.class.isAssignableFrom(returnType)) {
 //                return invokePointer(callFlags, args);
                 resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            return new Pointer(null, seg);
+                        }
+                    }
+                    return null;
+                };
             } else if (Structure.class.isAssignableFrom(returnType)) {
-//                if (Structure.ByValue.class.isAssignableFrom(returnType)) {
-//                    Structure s =
+                resLayout = ADDRESS;
+                if (Structure.ByValue.class.isAssignableFrom(returnType)) {
+                    Structure structure = Structure.newInstance((Class<? extends Structure>) returnType);
+                    if (structure.size() > JAVA_LONG.byteSize()) {
+                        resLayout = ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(structure.size(), JAVA_BYTE));
+                        throw new UnsupportedOperationException("Structure size " + structure.size()
+                                + " > " + JAVA_LONG.byteSize());
+                    }
+                    resultConverter = o -> {
+                        if (o instanceof MemorySegment seg) {
+//                            Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
 //                            Native.invokeStructure(this, this.peer, callFlags, args,
 //                                    Structure.newInstance((Class<? extends Structure>) returnType));
-//                    s.autoRead();
-//                    result = s;
-//                } else {
+                            long address = seg.address();// address is the value it seems
+                            int byteSize = (int) JAVA_LONG.byteSize();
+                            byte[] bytes = new byte[byteSize];
+                            for (int i = 0; i < byteSize; i++) {
+                                bytes[i] = (byte) address;
+                                address >>= 8;
+                            }
+                            seg = MemorySegment.ofArray(bytes);
+                            Pointer p = new Pointer(null, seg);
+                            Structure s = Structure.newInstance((Class<? extends Structure>) returnType, p);
+                            s.useMemory(p);
+                            s.autoRead();
+                            return s;
+                        }
+                        return null;
+                    };
+                } else {
 //                    result = invokePointer(callFlags, args);
-//                    if (result != null) {
-//                        Structure s = Structure.newInstance((Class<? extends Structure>) returnType, (Pointer) result);
-//                        s.conditionalAutoRead();
-//                        result = s;
-//                    }
-//                }
-                resLayout = ADDRESS; // TODO
+                    resultConverter = o -> {
+                        if (o instanceof MemorySegment seg) {
+                            if (seg.address() != 0) {
+                                Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
+                                Structure s = Structure.newInstance((Class<? extends Structure>) returnType, p);
+                                s.conditionalAutoRead();
+                                return s;
+                            }
+                        }
+                        return null;
+                    };
+                }
             } else if (Callback.class.isAssignableFrom(returnType)) {
 //                result = invokePointer(callFlags, args);
 //                if (result != null) {
 //                    result = CallbackReference.getCallback(returnType, (Pointer) result);
 //                }
-                resLayout = ADDRESS; // TODO
+                resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            Pointer p = new Pointer(null, seg.reinterpret(ADDRESS.byteSize()));
+                            return CallbackReference.getCallback(returnType, p);
+                        }
+                    }
+                    return null;
+                };
             } else if (returnType == String[].class) {
 //                Pointer p = invokePointer(callFlags, args);
 //                if (p != null) {
 //                    result = p.getStringArray(0, encoding);
 //                }
-                resLayout = ADDRESS; // TODO
+                resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
+                            return p.getStringArray(0, encoding);
+                        }
+                    }
+                    return null;
+                };
             } else if (returnType == WString[].class) {
 //                Pointer p = invokePointer(callFlags, args);
-//                if (p != null) {
-//                    String[] arr = p.getWideStringArray(0);
-//                    WString[] warr = new WString[arr.length];
-//                    for (int i = 0; i < arr.length; i++) {
-//                        warr[i] = new WString(arr[i]);
-//                    }
-//                    result = warr;
-//                }
-                resLayout = ADDRESS; // TODO
+                resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            Pointer p = new Pointer(null, seg);
+                            String[] arr = p.getWideStringArray(0);
+                            WString[] warr = new WString[arr.length];
+                            for (int i = 0; i < arr.length; i++) {
+                                warr[i] = new WString(arr[i]);
+                            }
+                            return warr;
+                        }
+                    }
+                    return null;
+                };
             } else if (returnType == Pointer[].class) {
 //                Pointer p = invokePointer(callFlags, args);
-//                if (p != null) {
-//                    result = p.getPointerArray(0);
-//                }
-                resLayout = ADDRESS; // TODO
+                resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            Pointer p = new Pointer(null, seg);
+                            return p.getPointerArray(0);
+                        }
+                    }
+                    return null;
+                };
             } else if (allowObjects) {
-//                result = Native.invokeObject(this, this.peer, callFlags, args);
-//                if (result != null
-//                        && !returnType.isAssignableFrom(result.getClass())) {
-//                    throw new ClassCastException("Return type " + returnType
-//                            + " does not match result "
-//                            + result.getClass());
-//                }
-                resLayout = ADDRESS; // TODO
+                resLayout = ADDRESS;
+                resultConverter = o -> {
+                    if (o instanceof MemorySegment seg) {
+                        if (seg.address() != 0) {
+                            if (!returnType.isAssignableFrom(o.getClass())) {
+                                throw new ClassCastException("Return type " + returnType
+                                        + " does not match result "
+                                        + o.getClass());
+                            }
+                        }
+                    }
+                    return null;
+                };
             } else {
                 throw new IllegalArgumentException("Unsupported return type " + returnType + " in function " + getName());
             }
@@ -538,8 +642,12 @@ public class Function extends Pointer {
                     Object a = args[j];
                     argLayouts[j] = switch (a) {
                         case null -> ADDRESS;
-                        case Integer i -> JAVA_INT;
-                        case Long l -> JAVA_LONG;
+                        case Byte _ -> JAVA_BYTE;
+                        case Character _ -> JAVA_CHAR;
+                        case Integer _ -> JAVA_INT;
+                        case Long _ -> JAVA_LONG;
+                        case Float _ -> JAVA_FLOAT;
+                        case Double _ -> JAVA_DOUBLE;
 //                        case MemorySegmentReference ref -> {
 //                            if (ref.segment != null) {
 //                                yield ADDRESS;
@@ -548,7 +656,8 @@ public class Function extends Pointer {
 //                                yield JAVA_LONG;
 //                            }
 //                        }
-                        default -> ADDRESS; // TODO
+                        case Structure.ByValue _ -> JAVA_LONG; // TODO
+                        default -> ADDRESS;
                     };
                 }
                 if (resLayout == null) {
@@ -586,6 +695,22 @@ public class Function extends Pointer {
                         args[i] = ref.segment;
                     } else if (a instanceof Pointer pointer) {
                         args[i] = MemorySegment.ofAddress(pointer.peer);
+                    } else if (a instanceof Structure.ByValue _
+                    && a instanceof Structure structure) {
+                        int size = structure.size();
+                        if (size > JAVA_LONG.byteSize()) {
+                            throw new UnsupportedOperationException("Structure size " + size
+                                    + " > " + JAVA_LONG.byteSize());
+                        }
+                        Pointer p = structure.getPointer();
+                        byte[] bytes = new byte[size];
+                        p.segment.asByteBuffer().get(bytes);
+                        long value = 0;
+                        for (int j = size - 1; j >= 0; j--) {
+                            value <<= 8;
+                            value |= bytes[j] & 0xff;
+                        }
+                        args[i] = value;
                     } else {
                         args[i] = MemorySegment.NULL;
                     }
@@ -598,14 +723,16 @@ public class Function extends Pointer {
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
-        if (result instanceof MemorySegment segment) {
-//            result = null; // new Pointer(arena, segment); // TODO ???
-            if (segment.address() == 0) {
-                result = null;
-            } else {
-                result = new Pointer(Arena.ofAuto(), segment);
-            }
+        if (resultConverter != null) {
+            result = resultConverter.apply(result);
         }
+//        else if (result instanceof MemorySegment seg) {
+//            if (seg.address() == 0) {
+//                result = null;
+//            } else {
+//                result = new Pointer(null, seg);
+//            }
+//        }
         if (converters != null) {
             for (Runnable r: converters) {
                 r.run();

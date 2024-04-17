@@ -139,6 +139,9 @@ public final class Native implements Version {
         if (nativeEncoding != null) {
             try {
                 nativeCharset = Charset.forName(nativeEncoding);
+                if ("windows-1252".equals(nativeCharset.name())) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
+                    nativeCharset = Charset.forName("ISO-8859-1"); // Latin-1
+                }
             } catch (Exception ex) {
                 LOG.log(Level.WARNING, "Failed to get charset for native.encoding value : '" + nativeEncoding + "'", ex);
             }
@@ -591,7 +594,7 @@ public final class Native implements Version {
      * @see #load(String, Class, Map)
      */
     public static <T extends Library> T load(Class<T> interfaceClass, Map<String, ?> options) {
-        return load(null, interfaceClass, options);
+        return load(null, interfaceClass, options, false);
     }
 
     /** Map a library interface to the given shared library, providing
@@ -609,7 +612,11 @@ public final class Native implements Version {
      * @see #load(String, Class, Map)
      */
     public static <T extends Library> T load(String name, Class<T> interfaceClass) {
-        return load(name, interfaceClass, Collections.<String, Object>emptyMap());
+        return load(name, interfaceClass, false);
+    }
+
+    public static <T extends Library> T load(String name, Class<T> interfaceClass, boolean jni) {
+        return load(name, interfaceClass, Collections.<String, Object>emptyMap(), jni);
     }
 
     /** Load a library interface from the given shared library, providing
@@ -629,13 +636,18 @@ public final class Native implements Version {
      * dependent libraries are missing.
      */
     public static <T extends Library> T load(String name, Class<T> interfaceClass, Map<String, ?> options) {
+        return load(name, interfaceClass, options, false);
+    }
+
+    public static <T extends Library> T load(String name, Class<T> interfaceClass, Map<String, ?> options,
+                                             boolean jni) {
         if (!Library.class.isAssignableFrom(interfaceClass)) {
             // Maybe still possible if the caller is not using generics?
             throw new IllegalArgumentException("Interface (" + interfaceClass.getSimpleName() + ")"
                     + " of library=" + name + " does not extend " + Library.class.getSimpleName());
         }
 
-        Library.Handler handler = new Library.Handler(name, interfaceClass, options);
+        Library.Handler handler = new Library.Handler(name, interfaceClass, options, jni);
         ClassLoader loader = interfaceClass.getClassLoader();
         Object proxy = Proxy.newProxyInstance(loader, new Class[] {interfaceClass}, handler);
         cacheOptions(interfaceClass, options, proxy);
@@ -659,7 +671,7 @@ public final class Native implements Version {
      */
     @Deprecated
     public static <T> T loadLibrary(Class<T> interfaceClass, Map<String, ?> options) {
-        return loadLibrary(null, interfaceClass, options);
+        return loadLibrary(null, interfaceClass, options, false);
     }
 
     /**
@@ -669,7 +681,7 @@ public final class Native implements Version {
      */
     @Deprecated
     public static <T> T loadLibrary(String name, Class<T> interfaceClass) {
-        return loadLibrary(name, interfaceClass, Collections.<String, Object>emptyMap());
+        return loadLibrary(name, interfaceClass, Collections.<String, Object>emptyMap(), false);
     }
 
     /**
@@ -678,14 +690,14 @@ public final class Native implements Version {
      * @see Native#load(java.lang.String, java.lang.Class, java.util.Map)
      */
     @Deprecated
-    public static <T> T loadLibrary(String name, Class<T> interfaceClass, Map<String, ?> options) {
+    public static <T> T loadLibrary(String name, Class<T> interfaceClass, Map<String, ?> options, boolean jni) {
         if (!Library.class.isAssignableFrom(interfaceClass)) {
             // Maybe still possible if the caller is not using generics?
             throw new IllegalArgumentException("Interface (" + interfaceClass.getSimpleName() + ")"
                     + " of library=" + name + " does not extend " + Library.class.getSimpleName());
         }
 
-        Library.Handler handler = new Library.Handler(name, interfaceClass, options);
+        Library.Handler handler = new Library.Handler(name, interfaceClass, options, jni);
         ClassLoader loader = interfaceClass.getClassLoader();
         Object proxy = Proxy.newProxyInstance(loader, new Class[] {interfaceClass}, handler);
         cacheOptions(interfaceClass, options, proxy);
@@ -1221,7 +1233,7 @@ public final class Native implements Version {
         return
                 switch (type) {
                     case TYPE_VOIDP, TYPE_SIZE_T, TYPE_LONG_DOUBLE -> (int)ADDRESS.byteSize();
-                    case TYPE_LONG -> (int)JAVA_LONG.byteSize();
+                    case TYPE_LONG -> (int)JAVA_INT.byteSize(); // (int)JAVA_LONG.byteSize();
                     case TYPE_WCHAR_T -> (int)JAVA_CHAR.byteSize();
                     case TYPE_BOOL -> 1; // TODO ???
                     default -> throw new IllegalArgumentException("sizeof " + type);
@@ -1546,6 +1558,10 @@ public final class Native implements Version {
         register(findDirectMappedClass(getCallingClass()), libName);
     }
 
+    public static void register(String libName, boolean jni) {
+        register(findDirectMappedClass(getCallingClass()), libName, jni);
+    }
+
     /**
      * When called from a class static initializer, maps all native methods
      * found within that class to native libraries via the JNA raw calling
@@ -1823,8 +1839,14 @@ public final class Native implements Version {
      * should be bound
      */
     public static void register(Class<?> cls, String libName) {
+        register(cls, libName, false);
+    }
+
+    public static void register(Class<?> cls, String libName, boolean jni) {
         NativeLibrary library =
-                NativeLibrary.getInstance(libName, Collections.singletonMap(Library.OPTION_CLASSLOADER, cls.getClassLoader()));
+                NativeLibrary.getInstance(libName,
+                        Collections.singletonMap(Library.OPTION_CLASSLOADER, cls.getClassLoader()),
+                        jni);
         register(cls, library);
     }
 
@@ -2250,9 +2272,24 @@ public final class Native implements Version {
     }
 
     /** Open the requested native library with the specified platform-specific
-     * otions.
+     * options.
      */
-    static native long open(String name, int flags);
+//    static native long open(String name, int flags);
+    static long open(String name, int flags) {
+        if (!name.contains(".")) {
+            try {
+                System.loadLibrary(name);
+                return 1;
+            } catch (Exception e) {
+            }
+        }
+        try {
+            System.load(name);
+            return 1;
+        } catch (Exception e2) {
+            return 0;
+        }
+    }
 
     /** Close the given native library. */
     static native void close(long handle);
@@ -2348,15 +2385,25 @@ public final class Native implements Version {
     }
 
     static String getString(Pointer pointer, long offset, String encoding) {
-        byte[] data = getStringBytes(pointer, pointer.peer, offset);
+//        byte[] data = getStringBytes(pointer, pointer.peer, offset);
+//        if (encoding != null) {
+//            try {
+//                return new String(data, encoding);
+//            }
+//            catch(UnsupportedEncodingException e) {
+//            }
+//        }
+//        return new String(data);
+        Charset charset = Charset.defaultCharset();
         if (encoding != null) {
-            try {
-                return new String(data, encoding);
-            }
-            catch(UnsupportedEncodingException e) {
-            }
+//            if ("windows-1252".equals(encoding)) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
+//                charset = Charset.forName("ISO-8859-1"); // Latin-1
+//                // https://www.i18nqa.com/debug/table-iso8859-1-vs-windows-1252.html
+//            } else {
+                charset = Charset.forName(encoding);
+//            }
         }
-        return new String(data);
+        return pointer.segment.getString(pointer.getOffset(offset), charset);
     }
 
     static native byte[] getStringBytes(Pointer pointer, long baseaddr, long offset);
@@ -2379,34 +2426,7 @@ public final class Native implements Version {
 
 //    static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
 
-    static void setPointer(Pointer pointer, long baseaddr, long offset, long value) {
-        MemorySegment segment = arenaMap.get(baseaddr);
-        if (segment == null) {
-            throw new IllegalArgumentException("baseaddr=" + baseaddr + " is not a valid");
-        }
-        segment.setAtIndex(JAVA_LONG, offset, value);
-    }
-
 //    static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
-
-    static void setWideString(Pointer pointer, long baseaddr, long offset, String value) {
-        MemorySegment segment = arenaMap.get(baseaddr);
-        if (segment == null) {
-            throw new IllegalArgumentException("baseaddr is invalid: " + baseaddr);
-        }
-//        segment.setString(offset, value); // TODO: wide string ???
-        segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().put(value).put('\0');
-    }
-
-    public static String fromWideString(MemorySegment wide) {
-        CharBuffer charBuffer = wide.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer();
-        int limit = 0; // check for zero termination
-        int end = charBuffer.limit();
-        while (limit < end && charBuffer.get(limit) != 0) {
-            limit++;
-        }
-        return charBuffer.limit(limit).toString();
-    }
 
     static native ByteBuffer getDirectByteBuffer(Pointer pointer, long addr, long offset, long length);
 
@@ -2436,7 +2456,7 @@ public final class Native implements Version {
     public static void free(long ptr) {
         MemorySegment segment = arenaMap.remove(ptr);
         if (segment != null) {
-            segment.unload();;
+            segment.unload();
         }
     }
 

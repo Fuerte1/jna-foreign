@@ -174,7 +174,7 @@ public interface Library {
         private final Map<String, Object> options;
         private final InvocationMapper invocationMapper;
         private final Map<Method, FunctionInfo> functions = new WeakHashMap<>();
-        public Handler(String libname, Class<?> interfaceClass, Map<String, ?> options) {
+        public Handler(String libname, Class<?> interfaceClass, Map<String, ?> options, boolean jni) {
 
             if (libname != null && "".equals(libname.trim())) {
                 throw new IllegalArgumentException("Invalid library name \"" + libname + "\"");
@@ -195,7 +195,7 @@ public interface Library {
             if (this.options.get(OPTION_CLASSLOADER) == null) {
                 this.options.put(OPTION_CLASSLOADER, interfaceClass.getClassLoader());
             }
-            this.nativeLibrary = NativeLibrary.getInstance(libname, this.options);
+            this.nativeLibrary = NativeLibrary.getInstance(libname, this.options, jni);
             invocationMapper = (InvocationMapper)this.options.get(OPTION_INVOCATION_MAPPER);
         }
 

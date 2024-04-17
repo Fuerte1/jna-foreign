@@ -207,6 +207,11 @@ public class NativeLibrary implements Closeable {
     }
 
     private static NativeLibrary loadLibrary(final String libraryName, final Map<String, ?> options) {
+        return loadLibrary(libraryName, options, false);
+    }
+
+    private static NativeLibrary loadLibrary(final String libraryName, final Map<String, ?> options,
+                                             boolean jni) {
         LOG.log(DEBUG_LOAD_LEVEL, "Looking for library '" + libraryName + "'");
 
 //        SymbolLookup stdlib = Linker.nativeLinker().defaultLookup();
@@ -498,11 +503,15 @@ public class NativeLibrary implements Closeable {
      * @param libraryOptions Native library options for the given library (see {@link Library}).
      */
     public static final NativeLibrary getInstance(String libraryName, Map<String, ?> libraryOptions) {
+        return getInstance(libraryName, libraryOptions, false);
+    }
+
+    public static final NativeLibrary getInstance(String libraryName, Map<String, ?> libraryOptions,
+                                                  boolean jni) {
         Map<String, Object> options = new HashMap<>(libraryOptions);
         if (options.get(Library.OPTION_CALLING_CONVENTION) == null) {
             options.put(Library.OPTION_CALLING_CONVENTION, Integer.valueOf(Function.C_CONVENTION));
         }
-
 
         // Use current process to load libraries we know are already
         // loaded by the VM to ensure we get the correct version
@@ -520,7 +529,7 @@ public class NativeLibrary implements Closeable {
                             null);
                 }
                 else {
-                    library = loadLibrary(libraryName, options);
+                    library = loadLibrary(libraryName, options, jni);
                 }
                 ref = new WeakReference<>(library);
                 libraries.put(library.getName() + options, ref);
