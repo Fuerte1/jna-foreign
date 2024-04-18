@@ -32,7 +32,7 @@ import org.junit.Test;
 public class PrematureGCTest {
     @Test
     public void testGC() {
-        Native.setProtected(false);
+        Native.foreignSetProtected(false);
 
         // This code below is reduced from a different test.  (I forget which.)
         new Memory(4);

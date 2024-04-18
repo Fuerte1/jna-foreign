@@ -74,7 +74,7 @@ public class ByReferenceToStringTest extends TestCase {
                 NativeLong.SIZE > 4 ? "0xffffffffffffffd6 (-42)" : "0xffffffd6 (-42)");
 
         PointerByReference pbr = new PointerByReference(Pointer.NULL);
-        assertTrue(pbr.toString().startsWith("null@0x"));
+        assertTrue(pbr.toString(), pbr.toString().startsWith("null@0x"));
         pbr = new PointerByReference(new Pointer(42));
         parseAndTest(pbr.toString(), "Pointer", "native");
     }

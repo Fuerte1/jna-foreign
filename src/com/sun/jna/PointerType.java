@@ -113,6 +113,6 @@ public abstract class PointerType implements NativeMapped {
 
     @Override
     public String toString() {
-        return pointer == null ? "NULL" : pointer.toString() + " (" + super.toString() + ")";
+        return pointer == null ? "NULL" : pointer + " (" + super.toString() + ")";
     }
 }

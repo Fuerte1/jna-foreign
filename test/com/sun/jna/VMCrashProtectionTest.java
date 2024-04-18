@@ -29,11 +29,11 @@ public class VMCrashProtectionTest extends TestCase {
 
     private boolean savedProtected = Boolean.getBoolean("jna.protected");
     protected void setUp() {
-        Native.setProtected(true);
+        Native.foreignSetProtected(true);
     }
 
     protected void tearDown() {
-        Native.setProtected(savedProtected);
+        Native.foreignSetProtected(savedProtected);
     }
 
     public void testAccessViolation() {
@@ -42,7 +42,7 @@ public class VMCrashProtectionTest extends TestCase {
             return;
         }
 
-        if (!Native.isProtected())
+        if (!Native.foreignIsProtected())
             return;
 
         Memory m = new Memory(Native.POINTER_SIZE);

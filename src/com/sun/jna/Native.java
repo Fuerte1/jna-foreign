@@ -52,6 +52,7 @@ import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -140,7 +141,7 @@ public final class Native implements Version {
             try {
                 nativeCharset = Charset.forName(nativeEncoding);
                 if ("windows-1252".equals(nativeCharset.name())) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
-                    nativeCharset = Charset.forName("ISO-8859-1"); // Latin-1
+                    nativeCharset = StandardCharsets.ISO_8859_1; // Latin-1
                 }
             } catch (Exception ex) {
                 LOG.log(Level.WARNING, "Failed to get charset for native.encoding value : '" + nativeEncoding + "'", ex);
@@ -264,9 +265,9 @@ public final class Native implements Version {
 
         // Perform initialization of other JNA classes until *after*
         // initializing the above final fields
-        initIDs();
+        foreignInitIDs();
         if (Boolean.getBoolean("jna.protected")) {
-            setProtected(true);
+            foreignSetProtected(true);
         }
         MAX_ALIGNMENT = Platform.isSPARC() || Platform.isWindows()
             || (Platform.isLinux() && (Platform.isARM() || Platform.isPPC() || Platform.isMIPS() || Platform.isLoongArch()))
@@ -323,10 +324,14 @@ public final class Native implements Version {
 
     private Native() { }
 
-//    private static native void initIDs();
+    private static native void initIDs();
 
-    private static void initIDs() {
-        FFIType.init();
+    private static void foreignInitIDs() {
+        if (jni) {
+            initIDs();
+        } else {
+            FFIType.init();
+        }
     }
 
     /** Set whether native memory accesses are protected from invalid
@@ -347,13 +352,26 @@ public final class Native implements Version {
      * (usually ${java.home}/lib/${os.arch}/libjsig.so) before launching your
      * Java application.
      */
-    public static synchronized native void setProtected(boolean enable);
+    private static synchronized native void setProtected(boolean enable);
+
+    public static void foreignSetProtected(boolean enable) {
+        if (jni) {
+            setProtected(enable);
+        }
+    }
 
     /** Returns whether protection is enabled.  Check the result of this method
      * after calling {@link #setProtected setProtected(true)} to determine
      * if this platform supports protecting memory accesses.
      */
-    public static synchronized native boolean isProtected();
+    private static synchronized native boolean isProtected();
+
+    public static boolean foreignIsProtected() {
+        if (jni) {
+            return isProtected();
+        }
+        return false; // true?
+    }
 
     /** Utility method to get the native window ID for a Java {@link Window}
      * as a <code>long</code> value.
