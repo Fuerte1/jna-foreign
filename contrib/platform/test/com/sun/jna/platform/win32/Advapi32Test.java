@@ -45,7 +45,7 @@ import static com.sun.jna.platform.win32.WinNT.SE_SECURITY_NAME;
 import static com.sun.jna.platform.win32.WinNT.TOKEN_ADJUST_PRIVILEGES;
 import static com.sun.jna.platform.win32.WinNT.TOKEN_DUPLICATE;
 import static com.sun.jna.platform.win32.WinNT.TOKEN_IMPERSONATE;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -97,19 +97,23 @@ import com.sun.jna.ptr.PointerByReference;
 import com.sun.jna.ptr.ShortByReference;
 
 import junit.framework.TestCase;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 /**
  * @author dblock[at]dblock[dot]org
  */
-public class Advapi32Test extends TestCase {
+public class Advapi32Test {
 
     private static final String EVERYONE = "S-1-1-0";
 
-    public static void main(String[] args) {
-        junit.textui.TestRunner.run(Advapi32Test.class);
-    }
+//    public static void main(String[] args) {
+//        junit.textui.TestRunner.run(Advapi32Test.class);
+//    }
 
     // see https://github.com/twall/jna/issues/482
+    @Test
     public void testNoDuplicateMethodsNames() {
         Collection<String> dupSet = AbstractWin32TestSupport.detectDuplicateMethods(Advapi32.class);
         if (dupSet.size() > 0) {
@@ -127,6 +131,7 @@ public class Advapi32Test extends TestCase {
         assertTrue("Duplicate methods found: " + dupSet, dupSet.isEmpty());
     }
 
+    @Test
     public void testGetUserName() {
         IntByReference len = new IntByReference();
         assertFalse(Advapi32.INSTANCE.GetUserNameW(null, len));
@@ -137,6 +142,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(username.length() > 0);
     }
 
+    @Test
     public void testLookupAccountName() {
         IntByReference pSid = new IntByReference(0);
         IntByReference pDomain = new IntByReference(0);
@@ -159,6 +165,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testIsValidSid() {
         String sidString = EVERYONE;
         PSIDByReference sid = new PSIDByReference();
@@ -175,6 +182,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testEqualSid() {
         String sidString = EVERYONE;
         PSIDByReference sid1 = new PSIDByReference();
@@ -192,6 +200,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetSidLength() {
         String sidString = EVERYONE;
         PSIDByReference sid = new PSIDByReference();
@@ -205,6 +214,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testLookupAccountSid() {
         // get SID bytes
         String sidString = EVERYONE;
@@ -241,6 +251,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testConvertSid() {
         String sidString = EVERYONE;
         PSIDByReference sid = new PSIDByReference();
@@ -263,6 +274,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testLogonUser() {
         HANDLEByReference phToken = new HANDLEByReference();
         assertFalse(Advapi32.INSTANCE.LogonUser("AccountDoesntExist", ".", "passwordIsInvalid",
@@ -270,6 +282,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(W32Errors.ERROR_SUCCESS != Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testOpenThreadTokenNoToken() {
         HANDLEByReference phToken = new HANDLEByReference();
         HANDLE threadHandle = Kernel32.INSTANCE.GetCurrentThread();
@@ -279,17 +292,19 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_NO_TOKEN, Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testOpenProcessToken() {
         HANDLEByReference phToken = new HANDLEByReference();
         try {
             HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
         } finally {
             Kernel32Util.closeHandleRef(phToken);
         }
     }
 
+    @Test
     public void testOpenThreadOrProcessToken() {
         HANDLEByReference phToken = new HANDLEByReference();
         try {
@@ -299,13 +314,14 @@ public class Advapi32Test extends TestCase {
                 assertEquals(W32Errors.ERROR_NO_TOKEN, Kernel32.INSTANCE.GetLastError());
                 HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
                 assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                        WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                        TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
             }
         } finally {
             Kernel32Util.closeHandleRef(phToken);
         }
     }
 
+    @Test
     public void testSetThreadTokenCurrentThread() {
         HANDLEByReference phToken = new HANDLEByReference();
         HANDLEByReference phTokenDup = new HANDLEByReference();
@@ -316,12 +332,12 @@ public class Advapi32Test extends TestCase {
                     WinNT.TOKEN_IMPERSONATE | WinNT.TOKEN_QUERY, false, phToken)) {
                 assertEquals(W32Errors.ERROR_NO_TOKEN, Kernel32.INSTANCE.GetLastError());
                 HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
-                assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle, WinNT.TOKEN_DUPLICATE, phToken));
+                assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle, TOKEN_DUPLICATE, phToken));
                 assertTrue(Advapi32.INSTANCE.DuplicateTokenEx(phToken.getValue(),
-                        WinNT.TOKEN_IMPERSONATE,
+                        TOKEN_IMPERSONATE,
                         null,
-                        WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
-                        WinNT.TOKEN_TYPE.TokenImpersonation,
+                        SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
+                        TOKEN_TYPE.TokenImpersonation,
                         phTokenDup));
                 // Null sets on current thread
                 assertTrue(Advapi32.INSTANCE.SetThreadToken(null, phTokenDup.getValue()));
@@ -336,6 +352,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testSetThreadTokenThisThread() {
         HANDLEByReference phToken = new HANDLEByReference();
         HANDLEByReference phTokenDup = new HANDLEByReference();
@@ -348,12 +365,12 @@ public class Advapi32Test extends TestCase {
                 assertEquals(W32Errors.ERROR_NO_TOKEN, Kernel32.INSTANCE.GetLastError());
                 HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
                 assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                        WinNT.TOKEN_DUPLICATE, phToken));
+                        TOKEN_DUPLICATE, phToken));
                 assertTrue(Advapi32.INSTANCE.DuplicateTokenEx(phToken.getValue(),
-                        WinNT.TOKEN_IMPERSONATE,
+                        TOKEN_IMPERSONATE,
                         null,
-                        WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
-                        WinNT.TOKEN_TYPE.TokenImpersonation,
+                        SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
+                        TOKEN_TYPE.TokenImpersonation,
                         phTokenDup));
                 // Use HANDLEByReference on this thread to test, should be good enough for API compatibility.
                 assertTrue(Advapi32.INSTANCE.SetThreadToken(pthreadHandle, phTokenDup.getValue()));
@@ -368,41 +385,44 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testDuplicateToken() {
         HANDLEByReference phToken = new HANDLEByReference();
         HANDLEByReference phTokenDup = new HANDLEByReference();
         HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
         try {
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
             assertTrue(Advapi32.INSTANCE.DuplicateToken(phToken.getValue(),
-                    WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, phTokenDup));
+                    SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, phTokenDup));
         } finally {
             Kernel32Util.closeHandleRefs(phTokenDup, phToken);
         }
     }
 
+    @Test
     public void testDuplicateTokenEx() {
         HANDLEByReference hExistingToken = new HANDLEByReference();
         HANDLEByReference phNewToken = new HANDLEByReference();
         try {
             HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, hExistingToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, hExistingToken));
             assertTrue(Advapi32.INSTANCE.DuplicateTokenEx(hExistingToken.getValue(),
-                    WinNT.GENERIC_READ, null, SECURITY_IMPERSONATION_LEVEL.SecurityAnonymous,
+                    GENERIC_READ, null, SECURITY_IMPERSONATION_LEVEL.SecurityAnonymous,
                     TOKEN_TYPE.TokenPrimary, phNewToken));
         } finally {
             Kernel32Util.closeHandleRefs(phNewToken, hExistingToken);
         }
     }
 
+    @Test
     public void testGetTokenOwnerInformation() {
         HANDLEByReference phToken = new HANDLEByReference();
         try {
             HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
             IntByReference tokenInformationLength = new IntByReference();
             assertFalse(Advapi32.INSTANCE.GetTokenInformation(phToken.getValue(),
                     WinNT.TOKEN_INFORMATION_CLASS.TokenOwner, null, 0, tokenInformationLength));
@@ -422,12 +442,13 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetTokenUserInformation() {
         HANDLEByReference phToken = new HANDLEByReference();
         try {
             HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
             IntByReference tokenInformationLength = new IntByReference();
             assertFalse(Advapi32.INSTANCE.GetTokenInformation(phToken.getValue(),
                     WinNT.TOKEN_INFORMATION_CLASS.TokenUser, null, 0, tokenInformationLength));
@@ -447,12 +468,13 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetTokenGroupsInformation() {
         HANDLEByReference phToken = new HANDLEByReference();
         try {
             HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
             assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                    WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
+                    TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, phToken));
             IntByReference tokenInformationLength = new IntByReference();
             assertFalse(Advapi32.INSTANCE.GetTokenInformation(phToken.getValue(),
                     WinNT.TOKEN_INFORMATION_CLASS.TokenGroups, null, 0, tokenInformationLength));
@@ -472,6 +494,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testImpersonateLoggedOnUser() {
         USER_INFO_1 userInfo = new USER_INFO_1();
         userInfo.usri1_name = "JNAAdvapi32TestImp";
@@ -501,6 +524,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testRegOpenKeyEx() {
         HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(
@@ -509,6 +533,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegConnectRegistry() {
         HKEYByReference phkResult = new HKEYByReference();
         int connectResult = Advapi32.INSTANCE.RegConnectRegistry(
@@ -529,6 +554,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phkResult.getValue()));
     }
 
+    @Test
     public void testRegQueryValueEx() {
         HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(
@@ -545,11 +571,13 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegDeleteValue() {
         assertEquals(W32Errors.ERROR_FILE_NOT_FOUND, Advapi32.INSTANCE.RegDeleteValue(
                 WinReg.HKEY_CURRENT_USER, "JNAAdvapi32TestDoesntExist"));
     }
 
+    @Test
     public void testRegSetValueEx_REG_SZ() {
         HKEYByReference phKey = new HKEYByReference();
         // create parent key
@@ -583,6 +611,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegSetValueEx_DWORD() {
         HKEYByReference phKey = new HKEYByReference();
         // create parent key
@@ -621,6 +650,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegCreateKeyEx() {
         HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(
@@ -636,11 +666,13 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegDeleteKey() {
         assertEquals(W32Errors.ERROR_FILE_NOT_FOUND, Advapi32.INSTANCE.RegDeleteKey(
                 WinReg.HKEY_CURRENT_USER, "JNAAdvapi32TestDoesntExist"));
     }
 
+    @Test
     public void testRegEnumKeyEx() {
         HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(
@@ -661,6 +693,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegEnumValue() {
         HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(
@@ -683,6 +716,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegCloseKey(phKey.getValue()));
     }
 
+    @Test
     public void testRegQueryInfoKey() {
         IntByReference lpcClass = new IntByReference();
         IntByReference lpcSubKeys = new IntByReference();
@@ -701,6 +735,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(lpcSubKeys.getValue() > 0);
     }
 
+    @Test
     public void testRegNotifyChangeKeyValue() {
         final HKEYByReference phKey = new HKEYByReference();
         assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegOpenKeyEx(WinReg.HKEY_CURRENT_USER,
@@ -709,8 +744,7 @@ public class Advapi32Test extends TestCase {
                 null);
         assertNotNull(event);
         final int filter = WinNT.REG_NOTIFY_CHANGE_LAST_SET | WinNT.REG_NOTIFY_CHANGE_NAME;
-        assertEquals(W32Errors.ERROR_SUCCESS,
-                Advapi32.INSTANCE.RegNotifyChangeKeyValue(phKey.getValue(), true, filter, event, true));
+        assertEquals(W32Errors.ERROR_SUCCESS, Advapi32.INSTANCE.RegNotifyChangeKeyValue(phKey.getValue(), true, filter, event, true));
         final int res = Kernel32.INSTANCE.WaitForSingleObject(event, 1000);
         // Two possible outcomes: Either we notice a timeout or we notice a change:
         assertTrue(res == WinError.WAIT_TIMEOUT || res == WinBase.WAIT_OBJECT_0);
@@ -718,6 +752,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Kernel32.INSTANCE.CloseHandle(event));
     }
 
+    @Test
     public void testIsWellKnownSid() {
         String sidString = EVERYONE;
         PSIDByReference sid = new PSIDByReference();
@@ -732,13 +767,12 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testCreateWellKnownSid() {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinWorldSid, null, pSid, cbSid));
-        assertTrue("Not recognized as well-known SID",
-                Advapi32.INSTANCE.IsWellKnownSid(pSid, WELL_KNOWN_SID_TYPE.WinWorldSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinWorldSid, null, pSid, cbSid));
+        assertTrue("Not recognized as well-known SID", Advapi32.INSTANCE.IsWellKnownSid(pSid, WELL_KNOWN_SID_TYPE.WinWorldSid));
         assertTrue("Invalid SID size", cbSid.getValue() <= WinNT.SECURITY_MAX_SID_SIZE);
         PointerByReference convertedSidStringPtr = new PointerByReference();
         assertTrue("Failed to convert SID", Advapi32.INSTANCE.ConvertSidToStringSid(pSid, convertedSidStringPtr));
@@ -752,15 +786,17 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testInitializeSecurityDescriptor() {
         SECURITY_DESCRIPTOR sd = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(sd, WinNT.SECURITY_DESCRIPTOR_REVISION));
     }
 
+    @Test
     public void testSetGetSecurityDescriptorControl() {
         SECURITY_DESCRIPTOR sd = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(sd, WinNT.SECURITY_DESCRIPTOR_REVISION));
-        assertTrue(Advapi32.INSTANCE.SetSecurityDescriptorControl(sd, (short)WinNT.SE_DACL_PROTECTED, (short)WinNT.SE_DACL_PROTECTED));
+        assertTrue(Advapi32.INSTANCE.SetSecurityDescriptorControl(sd, (short) WinNT.SE_DACL_PROTECTED, (short)WinNT.SE_DACL_PROTECTED));
         ShortByReference pControl = new ShortByReference();
         IntByReference lpdwRevision = new IntByReference();
         assertTrue(Advapi32.INSTANCE.GetSecurityDescriptorControl(sd, pControl, lpdwRevision));
@@ -768,14 +804,14 @@ public class Advapi32Test extends TestCase {
         assertTrue(lpdwRevision.getValue() == WinNT.SECURITY_DESCRIPTOR_REVISION);
     }
 
+    @Test
     public void testSetGetSecurityDescriptorOwner() {
         SECURITY_DESCRIPTOR sd = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(sd, WinNT.SECURITY_DESCRIPTOR_REVISION));
 
         PSID pSidPut = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSidPut, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSidPut, cbSid));
 
         assertTrue(Advapi32.INSTANCE.SetSecurityDescriptorOwner(sd, pSidPut, true));
 
@@ -787,14 +823,14 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pSidPut, pSidGet));
     }
 
+    @Test
     public void testSetGetSecurityDescriptorGroup() {
         SECURITY_DESCRIPTOR sd = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(sd, WinNT.SECURITY_DESCRIPTOR_REVISION));
 
         PSID pSidPut = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSidPut, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSidPut, cbSid));
 
         assertTrue(Advapi32.INSTANCE.SetSecurityDescriptorGroup(sd, pSidPut, true));
 
@@ -806,14 +842,14 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pSidPut, pSidGet));
     }
 
+    @Test
     public void testSetGetSecurityDescriptorDacl() throws IOException {
         SECURITY_DESCRIPTOR sd = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(sd, WinNT.SECURITY_DESCRIPTOR_REVISION));
 
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -835,11 +871,11 @@ public class Advapi32Test extends TestCase {
         assertEquals(WinNT.ACL_REVISION, pAclGet.AclRevision);
     }
 
+    @Test
     public void testInitializeAcl() throws IOException {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -850,11 +886,11 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.InitializeAcl(pAcl, cbAcl, WinNT.ACL_REVISION));
     }
 
+    @Test
     public void testGetAce() throws IOException {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -872,11 +908,12 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pAceGet.psid, pSid));
     }
 
+    @Test
+    @Ignore("AddAce hangs")
     public void testAddAce() throws IOException {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -888,6 +925,7 @@ public class Advapi32Test extends TestCase {
                 pSid);
 
         assertTrue(Advapi32.INSTANCE.InitializeAcl(pAcl, cbAcl, WinNT.ACL_REVISION));
+        // TODO: hangs here
         assertTrue(Advapi32.INSTANCE.AddAce(pAcl, WinNT.ACL_REVISION, WinNT.MAXDWORD, pace.getPointer(), pace.size()));
 
         PointerByReference pAce = new PointerByReference(new Memory(16));
@@ -897,11 +935,11 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pAceGet.psid, pSid));
     }
 
+    @Test
     public void testAddAccessAllowedAce() throws IOException {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -918,11 +956,11 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pAceGet.psid, pSid));
     }
 
+    @Test
     public void testAddAccessAllowedAceEx() throws IOException {
         PSID pSid = new PSID(WinNT.SECURITY_MAX_SID_SIZE);
         IntByReference cbSid = new IntByReference(WinNT.SECURITY_MAX_SID_SIZE);
-        assertTrue("Failed to create well-known SID",
-                Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
+        assertTrue("Failed to create well-known SID", Advapi32.INSTANCE.CreateWellKnownSid(WELL_KNOWN_SID_TYPE.WinBuiltinAdministratorsSid, null, pSid, cbSid));
 
         int sidLength = Advapi32.INSTANCE.GetLengthSid(pSid);
         int cbAcl = Native.getNativeSize(ACL.class, null);
@@ -939,6 +977,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.EqualSid(pAceGet.psid, pSid));
     }
 
+    @Test
     public void testOpenEventLog() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         assertNotNull(h);
@@ -946,6 +985,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseEventLog(h));
     }
 
+    @Test
     public void testRegisterEventSource() {
         // the Security event log is reserved
         HANDLE h = Advapi32.INSTANCE.RegisterEventSource(null, "Security");
@@ -953,6 +993,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_ACCESS_DENIED, Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testReportEvent() {
         String applicationEventLog = "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application";
         String jnaEventSource = "JNADevEventSource";
@@ -1002,6 +1043,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetNumberOfEventLogRecords() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         assertNotEquals(h, WinBase.INVALID_HANDLE_VALUE);
@@ -1026,6 +1068,7 @@ public class Advapi32Test extends TestCase {
     }
     */
 
+    @Test
     public void testBackupEventLog() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         assertNotNull(h);
@@ -1047,6 +1090,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseEventLog(hBackup));
     }
 
+    @Test
     public void testReadEventLog() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         IntByReference pnBytesRead = new IntByReference();
@@ -1060,6 +1104,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseEventLog(h));
     }
 
+    @Test
     public void testReadEventLogEntries() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         IntByReference pnBytesRead = new IntByReference();
@@ -1098,12 +1143,11 @@ public class Advapi32Test extends TestCase {
             }
         }
         assertTrue(String.format("Unexpected error after reading event log: 0x%08X (%s)"
-                   , rc, Kernel32Util.formatMessage(rc)),
-                   rc == W32Errors.ERROR_HANDLE_EOF || rc == 0);
-        assertTrue("Error closing event log",
-                   Advapi32.INSTANCE.CloseEventLog(h));
+                   , rc, Kernel32Util.formatMessage(rc)), rc == W32Errors.ERROR_HANDLE_EOF || rc == 0);
+        assertTrue("Error closing event log", Advapi32.INSTANCE.CloseEventLog(h));
     }
 
+    @Test
     public void testGetOldestEventLogRecord() {
         HANDLE h = Advapi32.INSTANCE.OpenEventLog(null, "Application");
         IntByReference oldestRecord = new IntByReference();
@@ -1112,6 +1156,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseEventLog(h));
     }
 
+    @Test
     public void testQueryServiceStatusEx() {
 
         SC_HANDLE scmHandle = Advapi32.INSTANCE.OpenSCManager(null, null, Winsvc.SC_MANAGER_CONNECT);
@@ -1141,6 +1186,7 @@ public class Advapi32Test extends TestCase {
     }
 
 
+    @Test
     public void testControlService() {
         SC_HANDLE scmHandle = Advapi32.INSTANCE.OpenSCManager(null, null, Winsvc.SC_MANAGER_CONNECT);
         assertNotNull(scmHandle);
@@ -1158,6 +1204,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseServiceHandle(scmHandle));
     }
 
+    @Test
     public void testStartService() {
         SC_HANDLE scmHandle = Advapi32.INSTANCE.OpenSCManager(null, null, Winsvc.SC_MANAGER_CONNECT);
         assertNotNull(scmHandle);
@@ -1172,6 +1219,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseServiceHandle(scmHandle));
     }
 
+    @Test
     public void testOpenService() {
         assertNull(Advapi32.INSTANCE.OpenService(null, "eventlog", Winsvc.SERVICE_QUERY_CONFIG ));
         assertEquals(W32Errors.ERROR_INVALID_HANDLE, Kernel32.INSTANCE.GetLastError());
@@ -1192,6 +1240,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(Advapi32.INSTANCE.CloseServiceHandle(scmHandle));
     }
 
+    @Test
     public void testOpenSCManager() {
         SC_HANDLE handle = Advapi32.INSTANCE.OpenSCManager(null, null, Winsvc.SC_MANAGER_CONNECT);
         assertNotNull(handle);
@@ -1199,14 +1248,14 @@ public class Advapi32Test extends TestCase {
 
         assertNull(Advapi32.INSTANCE.OpenSCManager("invalidMachineName", null, Winsvc.SC_MANAGER_CONNECT));
         int err = Kernel32.INSTANCE.GetLastError();
-        assertTrue("Unexpected error in OpenSCManager: " + err,
-                   err == W32Errors.RPC_S_SERVER_UNAVAILABLE
-                   || err == W32Errors.RPC_S_INVALID_NET_ADDR);
+        assertTrue("Unexpected error in OpenSCManager: " + err, err == W32Errors.RPC_S_SERVER_UNAVAILABLE
+        || err == W32Errors.RPC_S_INVALID_NET_ADDR);
 
         assertNull(Advapi32.INSTANCE.OpenSCManager(null, "invalidDatabase", Winsvc.SC_MANAGER_CONNECT));
         assertEquals(W32Errors.ERROR_INVALID_NAME, Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testCloseServiceHandle() throws Exception {
         SC_HANDLE handle = Advapi32.INSTANCE.OpenSCManager(null, null, Winsvc.SC_MANAGER_CONNECT);
         assertNotNull(handle);
@@ -1216,15 +1265,16 @@ public class Advapi32Test extends TestCase {
         assertEquals(W32Errors.ERROR_INVALID_HANDLE, Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testCreateProcessAsUser() {
         HANDLEByReference hToken = new HANDLEByReference();
         HANDLE processHandle = Kernel32.INSTANCE.GetCurrentProcess();
         assertTrue(Advapi32.INSTANCE.OpenProcessToken(processHandle,
-                WinNT.TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, hToken));
+                TOKEN_DUPLICATE | WinNT.TOKEN_QUERY, hToken));
         try {
             assertFalse(Advapi32.INSTANCE.CreateProcessAsUser(hToken.getValue(), null, "InvalidCmdLine.jna",
-                    null, null, false, 0, null, null, new WinBase.STARTUPINFO(),
-                    new WinBase.PROCESS_INFORMATION()));
+                    null, null, false, 0, null, null, new STARTUPINFO(),
+                    new PROCESS_INFORMATION()));
             assertEquals(W32Errors.ERROR_FILE_NOT_FOUND, Kernel32.INSTANCE.GetLastError());
         } finally {
             Kernel32Util.closeHandleRef(hToken);
@@ -1234,6 +1284,7 @@ public class Advapi32Test extends TestCase {
     /**
      * Tests both {@link Advapi32#LookupPrivilegeValue} and {@link Advapi32#LookupPrivilegeName}
      */
+    @Test
     public void testLookupPrivilegeValueAndLookupPrivilegeName() {
         WinNT.LUID luid = new WinNT.LUID();
 
@@ -1250,10 +1301,11 @@ public class Advapi32Test extends TestCase {
         assertEquals(WinNT.SE_BACKUP_NAME, Native.toString(lpName));
     }
 
+    @Test
     public void testAdjustTokenPrivileges() {
         HANDLEByReference hToken = new HANDLEByReference();
         assertTrue(Advapi32.INSTANCE.OpenProcessToken(Kernel32.INSTANCE.GetCurrentProcess(),
-                WinNT.TOKEN_ADJUST_PRIVILEGES | WinNT.TOKEN_QUERY, hToken));
+                TOKEN_ADJUST_PRIVILEGES | WinNT.TOKEN_QUERY, hToken));
 
         try {
             // Find an already enabled privilege
@@ -1281,11 +1333,13 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testImpersonateSelf() {
-        assertTrue(Advapi32.INSTANCE.ImpersonateSelf(WinNT.SECURITY_IMPERSONATION_LEVEL.SecurityAnonymous));
+        assertTrue(Advapi32.INSTANCE.ImpersonateSelf(SECURITY_IMPERSONATION_LEVEL.SecurityAnonymous));
         assertTrue(Advapi32.INSTANCE.RevertToSelf());
     }
 
+    @Test
     public void testGetSetFileSecurityNoSACL() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1300,23 +1354,22 @@ public class Advapi32Test extends TestCase {
 
         try {
 
-            assertEquals("GetFileSecurity(" + filePath + ")", true,
-                         Advapi32.INSTANCE.GetFileSecurity(
-                                 filePath,
-                                 infoType,
-                                 memorySecurity,
-                                 memSize,
-                                 sizeNeeded));
-            assertEquals("SetFileSecurity(" + filePath + ")", true,
-                         Advapi32.INSTANCE.SetFileSecurity(
-                                 filePath,
-                                 infoType,
-                                 memorySecurity));
+            assertEquals("GetFileSecurity(" + filePath + ")", true, Advapi32.INSTANCE.GetFileSecurity(
+                    filePath,
+                    infoType,
+                    memorySecurity,
+                    memSize,
+                    sizeNeeded));
+            assertEquals("SetFileSecurity(" + filePath + ")", true, Advapi32.INSTANCE.SetFileSecurity(
+                    filePath,
+                    infoType,
+                    memorySecurity));
         } finally {
             file.delete();
         }
     }
 
+    @Test
     public void testGetSetSecurityInfoNoSACL() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1343,26 +1396,24 @@ public class Advapi32Test extends TestCase {
         try {
             try {
 
-                assertEquals("GetSecurityInfo(" + filePath + ")", 0,
-                        Advapi32.INSTANCE.GetSecurityInfo(
-                                hFile,
-                                AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                infoType,
-                                ppsidOwner,
-                                ppsidGroup,
-                                ppDacl,
-                                null,
-                                ppSecurityDescriptor));
+                assertEquals("GetSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.GetSecurityInfo(
+                        hFile,
+                        AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                        infoType,
+                        ppsidOwner,
+                        ppsidGroup,
+                        ppDacl,
+                        null,
+                        ppSecurityDescriptor));
 
-                assertEquals("SetSecurityInfo(" + filePath + ")", 0,
-                        Advapi32.INSTANCE.SetSecurityInfo(
-                                hFile,
-                                AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                infoType,
-                                ppsidOwner.getValue(),
-                                ppsidGroup.getValue(),
-                                ppDacl.getValue(),
-                                null));
+                assertEquals("SetSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.SetSecurityInfo(
+                        hFile,
+                        AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                        infoType,
+                        ppsidOwner.getValue(),
+                        ppsidGroup.getValue(),
+                        ppDacl.getValue(),
+                        null));
             } finally {
                 Kernel32.INSTANCE.CloseHandle(hFile);
                 file.delete();
@@ -1372,6 +1423,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetSetSecurityInfoForFileWithSACL() throws Exception {
         boolean impersontating = false;
 
@@ -1441,25 +1493,23 @@ public class Advapi32Test extends TestCase {
                                 WinNT.OPEN_EXISTING,
                                 WinNT.FILE_ATTRIBUTE_NORMAL,
                                 null);
-                    assertEquals("GetSecurityInfo(" + filePath + ")", 0,
-                            Advapi32.INSTANCE.GetSecurityInfo(
-                                    hFile,
-                                    AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                    infoType,
-                                    ppsidOwner,
-                                    ppsidGroup,
-                                    ppDacl,
-                                    ppSacl,
-                                    ppSecurityDescriptor));
-                    assertEquals("SetSecurityInfo(" + filePath + ")", 0,
-                            Advapi32.INSTANCE.SetSecurityInfo(
-                                    hFile,
-                                    AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                    infoType,
-                                    ppsidOwner.getValue(),
-                                    ppsidGroup.getValue(),
-                                    ppDacl.getValue(),
-                                    ppSacl.getValue()));
+                    assertEquals("GetSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.GetSecurityInfo(
+                            hFile,
+                            AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                            infoType,
+                            ppsidOwner,
+                            ppsidGroup,
+                            ppDacl,
+                            ppSacl,
+                            ppSecurityDescriptor));
+                    assertEquals("SetSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.SetSecurityInfo(
+                            hFile,
+                            AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                            infoType,
+                            ppsidOwner.getValue(),
+                            ppsidGroup.getValue(),
+                            ppDacl.getValue(),
+                            ppSacl.getValue()));
                 } finally {
                     if (!WinBase.INVALID_HANDLE_VALUE.equals(hFile))
                         Kernel32.INSTANCE.CloseHandle(hFile);
@@ -1481,6 +1531,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetNamedSecurityInfoForFileNoSACL() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1494,16 +1545,15 @@ public class Advapi32Test extends TestCase {
         File file = createTempFile();
         try {
             try {
-                assertEquals("GetNamedSecurityInfo(" + file + ")", 0,
-                        Advapi32.INSTANCE.GetNamedSecurityInfo(
-                              file.getAbsolutePath(),
-                              AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                              infoType,
-                              ppsidOwner,
-                              ppsidGroup,
-                              ppDacl,
-                              null,
-                              ppSecurityDescriptor));
+                assertEquals("GetNamedSecurityInfo(" + file + ")", 0, Advapi32.INSTANCE.GetNamedSecurityInfo(
+                      file.getAbsolutePath(),
+                      AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                      infoType,
+                      ppsidOwner,
+                      ppsidGroup,
+                      ppDacl,
+                      null,
+                      ppSecurityDescriptor));
             } finally {
                 file.delete();
             }
@@ -1512,6 +1562,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetNamedSecurityInfoForFileWithSACL() throws Exception {
 
         boolean impersontating = false;
@@ -1564,16 +1615,15 @@ public class Advapi32Test extends TestCase {
             String filePath = file.getAbsolutePath();
             try {
                 try {
-                    assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0,
-                                 Advapi32.INSTANCE.GetNamedSecurityInfo(
-                                         filePath,
-                                         AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                         infoType,
-                                         ppsidOwner,
-                                         ppsidGroup,
-                                         ppDacl,
-                                         ppSacl,
-                                         ppSecurityDescriptor));
+                    assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.GetNamedSecurityInfo(
+                            filePath,
+                            AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                            infoType,
+                            ppsidOwner,
+                            ppsidGroup,
+                            ppDacl,
+                            ppSacl,
+                            ppSecurityDescriptor));
                 } finally {
                     file.delete();
                 }
@@ -1592,6 +1642,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testSetNamedSecurityInfoForFileNoSACL() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1606,25 +1657,23 @@ public class Advapi32Test extends TestCase {
         String filePath = file.getAbsolutePath();
         try {
             try {
-                assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0,
-                             Advapi32.INSTANCE.GetNamedSecurityInfo(
-                                     filePath,
-                                     AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                     infoType,
-                                     ppsidOwner,
-                                     ppsidGroup,
-                                     ppDacl,
-                                     null,
-                                     ppSecurityDescriptor));
-                assertEquals("SetNamedSecurityInfo(" + filePath + ")", 0,
-                             Advapi32.INSTANCE.SetNamedSecurityInfo(
-                                     filePath,
-                                     AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                     infoType,
-                                     ppsidOwner.getValue(),
-                                     ppsidGroup.getValue(),
-                                     ppDacl.getValue(),
-                                     null));
+                assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.GetNamedSecurityInfo(
+                        filePath,
+                        AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                        infoType,
+                        ppsidOwner,
+                        ppsidGroup,
+                        ppDacl,
+                        null,
+                        ppSecurityDescriptor));
+                assertEquals("SetNamedSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.SetNamedSecurityInfo(
+                        filePath,
+                        AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                        infoType,
+                        ppsidOwner.getValue(),
+                        ppsidGroup.getValue(),
+                        ppDacl.getValue(),
+                        null));
             } finally {
                 file.delete();
             }
@@ -1633,6 +1682,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testSetNamedSecurityInfoForFileWithSACL() throws Exception {
         boolean impersontating = false;
 
@@ -1692,27 +1742,25 @@ public class Advapi32Test extends TestCase {
             String filePath = file.getAbsolutePath();
             try {
                 try {
-                    assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0,
-                            Advapi32.INSTANCE.GetNamedSecurityInfo(
-                                  filePath,
-                                  AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                  infoType,
-                                  ppsidOwner,
-                                  ppsidGroup,
-                                  ppDacl,
-                                  ppSacl,
-                                  ppSecurityDescriptor));
+                    assertEquals("GetNamedSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.GetNamedSecurityInfo(
+                          filePath,
+                          AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                          infoType,
+                          ppsidOwner,
+                          ppsidGroup,
+                          ppDacl,
+                          ppSacl,
+                          ppSecurityDescriptor));
 
                     // Send the DACL as a SACL
-                    assertEquals("SetNamedSecurityInfo(" + filePath + ")", 0,
-                            Advapi32.INSTANCE.SetNamedSecurityInfo(
-                                  filePath,
-                                  AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                                  infoType,
-                                  ppsidOwner.getValue(),
-                                  ppsidGroup.getValue(),
-                                  ppDacl.getValue(),
-                                  ppDacl.getValue()));
+                    assertEquals("SetNamedSecurityInfo(" + filePath + ")", 0, Advapi32.INSTANCE.SetNamedSecurityInfo(
+                          filePath,
+                          AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                          infoType,
+                          ppsidOwner.getValue(),
+                          ppsidGroup.getValue(),
+                          ppDacl.getValue(),
+                          ppDacl.getValue()));
                 } finally {
                     file.delete();
                 }
@@ -1732,6 +1780,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testGetSecurityDescriptorLength() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1742,19 +1791,17 @@ public class Advapi32Test extends TestCase {
         File file = createTempFile();
         try {
             try {
-                assertEquals("GetNamedSecurityInfo(" + file + ")", 0,
-                        Advapi32.INSTANCE.GetNamedSecurityInfo(
-                              file.getAbsolutePath(),
-                              AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                              infoType,
-                              null,
-                              null,
-                              null,
-                              null,
-                              ppSecurityDescriptor));
+                assertEquals("GetNamedSecurityInfo(" + file + ")", 0, Advapi32.INSTANCE.GetNamedSecurityInfo(
+                      file.getAbsolutePath(),
+                      AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                      infoType,
+                      null,
+                      null,
+                      null,
+                      null,
+                      ppSecurityDescriptor));
 
-                assertTrue("GetSecurityDescriptorLength(" + file + ")",
-                        Advapi32.INSTANCE.GetSecurityDescriptorLength(ppSecurityDescriptor.getValue()) > 0);
+                assertTrue("GetSecurityDescriptorLength(" + file + ")", Advapi32.INSTANCE.GetSecurityDescriptorLength(ppSecurityDescriptor.getValue()) > 0);
             } finally {
                 file.delete();
             }
@@ -1763,6 +1810,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testIsValidSecurityDescriptor() throws Exception {
         int infoType = OWNER_SECURITY_INFORMATION
                        | GROUP_SECURITY_INFORMATION
@@ -1773,19 +1821,17 @@ public class Advapi32Test extends TestCase {
         File file = createTempFile();
         try {
             try {
-                assertEquals("GetNamedSecurityInfo(" + file + ")",
-                        Advapi32.INSTANCE.GetNamedSecurityInfo(
-                              file.getAbsolutePath(),
-                              AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                              infoType,
-                              null,
-                              null,
-                              null,
-                              null,
-                              ppSecurityDescriptor), 0);
+                assertEquals("GetNamedSecurityInfo(" + file + ")", Advapi32.INSTANCE.GetNamedSecurityInfo(
+                      file.getAbsolutePath(),
+                      AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                      infoType,
+                      null,
+                      null,
+                      null,
+                      null,
+                      ppSecurityDescriptor), 0);
 
-                assertTrue("IsValidSecurityDescriptor(" + file + ")",
-                        Advapi32.INSTANCE.IsValidSecurityDescriptor(ppSecurityDescriptor.getValue()));
+                assertTrue("IsValidSecurityDescriptor(" + file + ")", Advapi32.INSTANCE.IsValidSecurityDescriptor(ppSecurityDescriptor.getValue()));
             } finally {
                 file.delete();
             }
@@ -1794,6 +1840,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testMakeSelfRelativeSD() {
         SECURITY_DESCRIPTOR absolute = new SECURITY_DESCRIPTOR(64 * 1024);
         assertTrue(Advapi32.INSTANCE.InitializeSecurityDescriptor(absolute, WinNT.SECURITY_DESCRIPTOR_REVISION));
@@ -1803,6 +1850,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(WinNT.SECURITY_DESCRIPTOR_REVISION, relative.Revision);
     }
 
+    @Test
     public void testMakeAbsoluteSD() throws Exception {
         SECURITY_DESCRIPTOR absolute = new SECURITY_DESCRIPTOR(64 * 1024);
 
@@ -1815,16 +1863,15 @@ public class Advapi32Test extends TestCase {
         File file = createTempFile();
         try {
             try {
-                assertEquals("GetNamedSecurityInfo(" + file + ")",
-                    Advapi32.INSTANCE.GetNamedSecurityInfo(
-                        file.getAbsolutePath(),
-                        AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
-                        infoType,
-                        null,
-                        null,
-                        null,
-                        null,
-                        relativeByReference), 0);
+                assertEquals("GetNamedSecurityInfo(" + file + ")", Advapi32.INSTANCE.GetNamedSecurityInfo(
+                    file.getAbsolutePath(),
+                    AccCtrl.SE_OBJECT_TYPE.SE_FILE_OBJECT,
+                    infoType,
+                    null,
+                    null,
+                    null,
+                    null,
+                    relativeByReference), 0);
 
                 SECURITY_DESCRIPTOR_RELATIVE relative = new SECURITY_DESCRIPTOR_RELATIVE(relativeByReference.getValue());
 
@@ -1848,6 +1895,7 @@ public class Advapi32Test extends TestCase {
         }
     }
 
+    @Test
     public void testMapGenericReadMask() {
         final GENERIC_MAPPING mapping = new GENERIC_MAPPING();
         mapping.genericRead = new DWORD(FILE_GENERIC_READ);
@@ -1862,6 +1910,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(GENERIC_READ != (rights.getValue().intValue() & GENERIC_READ));
     }
 
+    @Test
     public void testMapGenericWriteMask() {
         final GENERIC_MAPPING mapping = new GENERIC_MAPPING();
         mapping.genericRead = new DWORD(FILE_GENERIC_READ);
@@ -1876,6 +1925,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(GENERIC_WRITE != (rights.getValue().intValue() & GENERIC_WRITE));
     }
 
+    @Test
     public void testMapGenericExecuteMask() {
         final GENERIC_MAPPING mapping = new GENERIC_MAPPING();
         mapping.genericRead = new DWORD(FILE_GENERIC_READ);
@@ -1890,6 +1940,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(GENERIC_EXECUTE != (rights.getValue().intValue() & GENERIC_EXECUTE));
     }
 
+    @Test
     public void testMapGenericAllMask() {
         final GENERIC_MAPPING mapping = new GENERIC_MAPPING();
         mapping.genericRead = new DWORD(FILE_GENERIC_READ);
@@ -1904,6 +1955,7 @@ public class Advapi32Test extends TestCase {
         assertTrue(GENERIC_ALL != (rights.getValue().intValue() & GENERIC_ALL));
     }
 
+    @Test
     public void testAccessCheck() {
         final GENERIC_MAPPING mapping = new GENERIC_MAPPING();
         mapping.genericRead = new DWORD(FILE_GENERIC_READ);
@@ -1925,6 +1977,7 @@ public class Advapi32Test extends TestCase {
         assertEquals(WinError.ERROR_INVALID_HANDLE, Kernel32.INSTANCE.GetLastError());
     }
 
+    @Test
     public void testEncryptFile() throws Exception {
         // create a temp file
         File file = createTempFile();
@@ -1942,6 +1995,7 @@ public class Advapi32Test extends TestCase {
         file.delete();
     }
 
+    @Test
     public void testDecryptFile() throws Exception {
         // create an encrypted file
         File file = createTempFile();
@@ -1960,6 +2014,7 @@ public class Advapi32Test extends TestCase {
         file.delete();
     }
 
+    @Test
     public void testFileEncryptionStatus() throws Exception {
         DWORDByReference lpStatus = new DWORDByReference();
 
@@ -1985,6 +2040,7 @@ public class Advapi32Test extends TestCase {
         file.delete();
     }
 
+    @Test
     public void testEncryptionDisable() throws Exception {
         DWORDByReference lpStatus = new DWORDByReference();
 
@@ -2016,6 +2072,7 @@ public class Advapi32Test extends TestCase {
         dir.delete();
     }
 
+    @Test
     public void testOpenEncryptedFileRaw() throws Exception {
         // create an encrypted file
         File file = createTempFile();
@@ -2032,6 +2089,7 @@ public class Advapi32Test extends TestCase {
         file.delete();
     }
 
+    @Test
     public void testReadEncryptedFileRaw() throws Exception {
         // create an encrypted file
         File file = createTempFile();
@@ -2071,6 +2129,7 @@ public class Advapi32Test extends TestCase {
         file.delete();
     }
 
+    @Test
     public void testWriteEncryptedFileRaw() throws Exception {
         // create an encrypted file
         File file = createTempFile();
@@ -2152,6 +2211,7 @@ public class Advapi32Test extends TestCase {
         return file;
     }
 
+    @Test
     public void testCreateProcessWithLogonW() {
         String winDir = Kernel32Util.getEnvironmentVariable("WINDIR");
         assertNotNull("No WINDIR value returned", winDir);

@@ -2406,7 +2406,7 @@ public final class Native implements Version {
                 charset = Charset.forName(encoding);
 //            }
         }
-        return pointer.segment.getString(pointer.getOffset(offset), charset);
+        return Pointer.reinterpret(pointer.segment, -1).getString(pointer.getOffset(offset), charset);
     }
 
     static native byte[] getStringBytes(Pointer pointer, long baseaddr, long offset);

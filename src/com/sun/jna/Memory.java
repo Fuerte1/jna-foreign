@@ -86,10 +86,14 @@ public class Memory extends Pointer implements Closeable {
      */
     private class SharedMemory extends Memory {
         public SharedMemory(long offset, long size) {
+//            if (size < 0) { // ???
+//                offset += size;
+//                size = 0;
+//            }
             this.arena = Memory.this.arena;
-            this.segment = Memory.this.segment;
+            this.segment = Memory.this.segment; // .reinterpret(offset + size).asSlice(offset, size);
             this.size = size;
-            this.peer = Memory.this.peer + offset;
+            this.peer = Memory.this.peer + offset; // this.segment.address();
         }
         /** No need to free memory. */
         @Override

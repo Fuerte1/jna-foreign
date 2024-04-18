@@ -478,8 +478,7 @@ public class Function extends Pointer {
                 resultConverter = o -> {
                     if (o instanceof MemorySegment seg) {
                         if (seg.address() != 0) {
-                            return seg
-                                    .reinterpret(1024 * 1024)
+                            return Pointer.reinterpret(seg, -1)
                                     .getString(0, Charset.defaultCharset()); // TODO
                         }
                     }
@@ -494,8 +493,7 @@ public class Function extends Pointer {
                 resultConverter = o -> {
                     if (o instanceof MemorySegment seg) {
                         if (seg.address() != 0) {
-                            String s = seg
-                                    .reinterpret(1024 * 1024)
+                            String s = Pointer.reinterpret(seg, -1)
                                     .getString(0, StandardCharsets.UTF_16LE);
                             if (s != null) {
                                 return new WString(s);
@@ -550,7 +548,7 @@ public class Function extends Pointer {
                     resultConverter = o -> {
                         if (o instanceof MemorySegment seg) {
                             if (seg.address() != 0) {
-                                Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
+                                Pointer p = new Pointer(null, Pointer.reinterpret(seg, -1));
                                 Structure s = Structure.newInstance((Class<? extends Structure>) returnType, p);
                                 s.conditionalAutoRead();
                                 return s;
@@ -568,7 +566,7 @@ public class Function extends Pointer {
                 resultConverter = o -> {
                     if (o instanceof MemorySegment seg) {
                         if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, seg.reinterpret(ADDRESS.byteSize()));
+                            Pointer p = new Pointer(null, Pointer.reinterpret(seg, ADDRESS.byteSize()));
                             return CallbackReference.getCallback(returnType, p);
                         }
                     }
@@ -583,7 +581,7 @@ public class Function extends Pointer {
                 resultConverter = o -> {
                     if (o instanceof MemorySegment seg) {
                         if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
+                            Pointer p = new Pointer(null, Pointer.reinterpret(seg, -1));
                             return p.getStringArray(0, encoding);
                         }
                     }
