@@ -1,0 +1,1 @@
+Import JnafUnitTest.reg to registry so that JnafAdvapi32UtilTest.java finds the keys and values from there.

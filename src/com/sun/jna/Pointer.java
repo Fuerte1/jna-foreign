@@ -610,8 +610,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public byte getByte(long offset) {
 //        return Native.getByte(this, this.peer, offset);
-        offset += getOffset();
-        return segment.get(JAVA_BYTE, offset);
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_BYTE.byteSize()).get(JAVA_BYTE, offs);
     }
 
     /**
@@ -624,8 +624,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public char getChar(long offset) {
 //        return Native.getChar(this, this.peer, offset);
-        offset += getOffset();
-        return segment.get(JAVA_CHAR, offset);
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_CHAR.byteSize()).get(JAVA_CHAR, offs);
     }
 
     /**
@@ -638,8 +638,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public short getShort(long offset) {
 //        return Native.getShort(this, this.peer, offset);
-        offset += getOffset();
-        return segment.get(JAVA_SHORT, offset);
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_SHORT.byteSize()).get(JAVA_SHORT, offs);
     }
 
     /**
@@ -652,7 +652,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public int getInt(long offset) {
 //        return Native.getInt(this, this.peer, offset);
-        return segment.reinterpret(JAVA_INT.byteSize()).get(JAVA_INT, getOffset(offset));
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_INT.byteSize()).get(JAVA_INT, offs);
     }
 
     /**
@@ -665,7 +666,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public long getLong(long offset) {
 //        return Native.getLong(this, this.peer, offset);
-        return segment.reinterpret(JAVA_LONG.byteSize()).get(JAVA_LONG, getOffset(offset));
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_LONG.byteSize()).get(JAVA_LONG, offs);
     }
 
     /**
@@ -690,8 +692,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public float getFloat(long offset) {
 //        return Native.getFloat(this, this.peer, offset);
-        offset += getOffset();
-        return segment.get(JAVA_FLOAT, offset);
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_FLOAT.byteSize()).get(JAVA_FLOAT, offs);
     }
 
     /**
@@ -704,8 +706,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public double getDouble(long offset) {
 //        return Native.getDouble(this, this.peer, offset);
-        offset += getOffset();
-        return segment.get(JAVA_DOUBLE, offset);
+        int offs = getOffset(offset);
+        return segment.reinterpret(offs + JAVA_DOUBLE.byteSize()).get(JAVA_DOUBLE, offs);
     }
 
     /**
@@ -1135,7 +1137,8 @@ public class Pointer extends MemorySegmentReference {
      */
     public void setInt(long offset, int value) {
 //        Native.setInt(this, this.peer, offset, value);
-        segment.reinterpret(JAVA_INT.byteSize()).set(JAVA_INT, getOffset(offset), value);
+        int offs = getOffset(offset);
+        segment.reinterpret(offs + JAVA_INT.byteSize()).set(JAVA_INT, offs, value);
     }
 
     /**

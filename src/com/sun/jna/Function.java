@@ -644,6 +644,7 @@ public class Function extends Pointer {
                         case null -> ADDRESS;
                         case Byte _ -> JAVA_BYTE;
                         case Character _ -> JAVA_CHAR;
+                        case Short _ -> JAVA_SHORT;
                         case Integer _ -> JAVA_INT;
                         case Long _ -> JAVA_LONG;
                         case Float _ -> JAVA_FLOAT;
@@ -682,11 +683,16 @@ public class Function extends Pointer {
                     args[i] = MemorySegment.NULL;
                 } else if (isPrimitiveArray(a.getClass())) {
                     if (converters == null) converters = new ArrayList<>();
-                    if (a instanceof char[] chars) {
-                        MemorySegment segment = arena.allocateFrom(JAVA_CHAR, chars);
+                    if (a instanceof char[] array) {
+                        MemorySegment segment = arena.allocateFrom(JAVA_CHAR, array);
                         args[i] = segment;
                         converters.add(() ->
-                                segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().get(chars));
+                                segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().get(array));
+                    } else if (a instanceof byte[] array) {
+                        MemorySegment segment = arena.allocateFrom(JAVA_BYTE, array);
+                        args[i] = segment;
+                        converters.add(() ->
+                                segment.asByteBuffer().get(array));
                     } else {
                         throw new UnsupportedOperationException("Convert: " + a);
                     }
@@ -717,7 +723,7 @@ public class Function extends Pointer {
                 }
             }
         }
-        Object result = null;
+        Object result;
         try {
             result = this.downcallHandle.invokeWithArguments(args);
         } catch (Throwable e) {
@@ -726,13 +732,6 @@ public class Function extends Pointer {
         if (resultConverter != null) {
             result = resultConverter.apply(result);
         }
-//        else if (result instanceof MemorySegment seg) {
-//            if (seg.address() == 0) {
-//                result = null;
-//            } else {
-//                result = new Pointer(null, seg);
-//            }
-//        }
         if (converters != null) {
             for (Runnable r: converters) {
                 r.run();
