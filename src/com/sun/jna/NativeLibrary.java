@@ -96,6 +96,7 @@ public class NativeLibrary implements Closeable {
     private final SymbolLookup symbolLookup;
     private volatile long handle;
     private final String libraryName;
+    private static final String LIBRARY_NAME_PROCESS = "<process>";
     private final String libraryPath;
     private final Map<String, Function> functions = new HashMap<>();
     private final SymbolProvider symbolProvider;
@@ -125,7 +126,7 @@ public class NativeLibrary implements Closeable {
         this.libraryPath = libraryPath;
         this.handle = handle;
         this.symbolLookup = symbolLookup;
-        this.cleanable = Cleaner.getCleaner().register(this, new NativeLibraryDisposer(handle));
+        this.cleanable = Cleaner.getCleaner().register(this, new NativeLibraryDisposer(handle, symbolLookup));
         Object option = options.get(Library.OPTION_CALLING_CONVENTION);
         int callingConvention = option instanceof Number ? ((Number)option).intValue() : Function.C_CONVENTION;
         this.callFlags = callingConvention;
@@ -178,31 +179,43 @@ public class NativeLibrary implements Closeable {
 
     private static ConcurrentHashMap<String, SymbolLookup> resourceLibrares = new ConcurrentHashMap<>();
 
-    public static SymbolLookup getSymbolLookup(String libraryName) {
+    public static Map.Entry<SymbolLookup, String> getSymbolLookup(String libraryName) {
         SymbolLookup lookup = resourceLibrares.get(libraryName);
         if (lookup != null) {
-            return lookup;
+            return new AbstractMap.SimpleEntry<>(lookup, libraryName);
         }
         try {
-            lookup = SymbolLookup.libraryLookup(libraryName, Native.arena);
-            resourceLibrares.put(libraryName, lookup);
-            return lookup;
-        } catch (Exception e) {
-            String fullName = libraryName;
-            if (!libraryName.endsWith(".dll")) {
-                fullName = libraryName + ".dll";
+            if (LIBRARY_NAME_PROCESS.equals(libraryName)) {
+                lookup = SymbolLookup.loaderLookup();
+            } else {
+                lookup = SymbolLookup.libraryLookup(libraryName, Native.arena);
             }
-            URL resource = NativeLibrary.class.getClassLoader().getResource(fullName);
-            if (resource != null) {
-                try {
-                    Path path = Path.of(resource.toURI());
-                    lookup = SymbolLookup.libraryLookup(path, Native.arena);
-                    resourceLibrares.put(libraryName, lookup);
-                    return lookup;
-                } catch (URISyntaxException _) {
+            resourceLibrares.put(libraryName, lookup);
+            return new AbstractMap.SimpleEntry<>(lookup, libraryName);
+        } catch (Exception e) {
+            if (!LIBRARY_NAME_PROCESS.equals(libraryName)) {
+                String fullName = libraryName;
+                if (!libraryName.contains(".")) {
+                    fullName = System.mapLibraryName(libraryName);
+                }
+                URL resource = NativeLibrary.class.getClassLoader().getResource(fullName);
+                if (resource == null) {
+                    if (fullName.startsWith("/")) {
+                        fullName = fullName.substring(1);
+                        resource = NativeLibrary.class.getClassLoader().getResource(fullName);
+                    }
+                }
+                if (resource != null) {
+                    try {
+                        Path path = Path.of(resource.toURI());
+                        lookup = SymbolLookup.libraryLookup(path, Native.arena);
+                        resourceLibrares.put(libraryName, lookup);
+                        return new AbstractMap.SimpleEntry<>(lookup, path.toString());
+                    } catch (URISyntaxException | IllegalArgumentException _) {
+                    }
                 }
             }
-            throw e;
+            throw new UnsatisfiedLinkError(e.getMessage());
         }
     }
 
@@ -216,8 +229,8 @@ public class NativeLibrary implements Closeable {
 
 //        SymbolLookup stdlib = Linker.nativeLinker().defaultLookup();
         if (!jni) {
-            SymbolLookup symbolLookup = getSymbolLookup(libraryName);
-            return new NativeLibrary(libraryName, null, 0, options, symbolLookup);
+            Map.Entry<SymbolLookup, String> lookup = getSymbolLookup(libraryName);
+            return new NativeLibrary(libraryName, lookup.getValue(), -1, options, lookup.getKey());
         }
 
         List<Throwable> exceptions = new ArrayList<>();
@@ -525,8 +538,12 @@ public class NativeLibrary implements Closeable {
 
             if (library == null) {
                 if (libraryName == null) {
-                    library = new NativeLibrary("<process>", null, Native.open(null, openFlags(options)), options,
-                            null);
+                    library = loadLibrary(LIBRARY_NAME_PROCESS, options, jni);
+//                    library = new NativeLibrary("<process>",
+//                            null,
+//                            Native.open(null, openFlags(options)),
+//                            options,
+//                            null);
                 }
                 else {
                     library = loadLibrary(libraryName, options, jni);
@@ -685,8 +702,7 @@ public class NativeLibrary implements Closeable {
      */
     public Pointer getGlobalVariableAddress(String symbolName) {
         try {
-            // return new Pointer(getSymbolAddress(symbolName));
-            return null; // TODO
+            return new Pointer(null, getSymbolAddress(symbolName));
         } catch(UnsatisfiedLinkError e) {
             throw new UnsatisfiedLinkError("Error looking up '" + symbolName + "': " + e.getMessage());
         }
@@ -1113,15 +1129,22 @@ public class NativeLibrary implements Closeable {
     private static final class NativeLibraryDisposer implements Runnable {
 
         private long handle;
+        private final SymbolLookup symbolLookup;
 
-        public NativeLibraryDisposer(long handle) {
+        public NativeLibraryDisposer(long handle, SymbolLookup symbolLookup) {
             this.handle = handle;
+            this.symbolLookup = symbolLookup;
         }
 
         public synchronized void run() {
             if (handle != 0) {
                 try {
-                    Native.close(handle);
+                    if (symbolLookup != null) {
+                        ;// TODO
+                    }
+                    if (handle != -1) {
+                        Native.close(handle);
+                    }
                 } finally {
                     handle = 0;
                 }

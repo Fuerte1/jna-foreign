@@ -1266,7 +1266,7 @@ public final class Native implements Version {
     }
 
     public static ForeignFunction ffGetLastError = new ForeignFunction(() ->
-            NativeLibrary.getSymbolLookup("kernel32"),
+            NativeLibrary.getSymbolLookup("kernel32").getKey(),
             "GetLastError",
             FunctionDescriptor.of(
                     JAVA_INT // error code, 0 = success
@@ -2276,6 +2276,9 @@ public final class Native implements Version {
      */
 //    static native long open(String name, int flags);
     static long open(String name, int flags) {
+        if (name == null) { // current process
+            throw new UnsupportedOperationException("Process can't be opened");
+        }
         if (!name.contains(".")) {
             try {
                 System.loadLibrary(name);
