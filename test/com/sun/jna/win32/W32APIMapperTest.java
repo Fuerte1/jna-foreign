@@ -23,6 +23,7 @@
  */
 package com.sun.jna.win32;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,6 +34,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class W32APIMapperTest {
     // Unicode Character 'SINGLE RIGHT-POINTING ANGLE QUOTATION MARK': ›
@@ -102,41 +105,41 @@ public class W32APIMapperTest {
             EXPECTED += "ffffffff";
         }
         Pointer p = Pointer.createConstant(Native.POINTER_SIZE == 8 ? -1 : 0xFFFFFFFFL);
-        Assert.assertTrue("Wrong value: " + p, p.toString().endsWith(EXPECTED));
+        assertTrue("Wrong value: " + p, p.toString().endsWith(EXPECTED));
 
     }
 
     @Test
     public void testBooleanArgumentConversion() {
-        Assert.assertTrue("Wrong boolean TRUE argument conversion (unicode)", unicode.returnInt32Argument(true));
-        Assert.assertFalse("Wrong boolean FALSE argument conversion (unicode)", unicode.returnInt32Argument(false));
+        assertTrue("Wrong boolean TRUE argument conversion (unicode)", unicode.returnInt32Argument(true));
+        assertFalse("Wrong boolean FALSE argument conversion (unicode)", unicode.returnInt32Argument(false));
 
-        Assert.assertTrue("Wrong boolean TRUE argument conversion (ASCII)", ascii.returnInt32Argument(true));
-        Assert.assertFalse("Wrong boolean FALSE argument conversion (ASCII)", ascii.returnInt32Argument(false));
+        assertTrue("Wrong boolean TRUE argument conversion (ASCII)", ascii.returnInt32Argument(true));
+        assertFalse("Wrong boolean FALSE argument conversion (ASCII)", ascii.returnInt32Argument(false));
     }
 
     @Test
     public void testUnicodeMapping() {
-        Assert.assertEquals("Strings should correspond to wide strings", MAGIC, unicode.returnWStringArgument(MAGIC));
+        assertEquals("Strings should correspond to wide strings", MAGIC, unicode.returnWStringArgument(MAGIC));
         String[] args = { "one", "two" };
-        Assert.assertEquals("String arrays should be converted to wchar_t*[] and back", args[0], unicode.returnWideStringArrayElement(args, 0));
+        assertEquals("String arrays should be converted to wchar_t*[] and back", args[0], unicode.returnWideStringArrayElement(args, 0));
     }
 
     @Test
     public void testASCIIMapping() {
-        Assert.assertEquals("Strings should correspond to C strings", MAGIC, ascii.returnStringArgument(MAGIC));
+        assertEquals("Strings should correspond to C strings", MAGIC, ascii.returnStringArgument(MAGIC));
     }
 
     @Test
     public void testUnicodeStructureSize() {
         UnicodeLibrary.TestStructure s = new UnicodeLibrary.TestStructure();
-        Assert.assertEquals("Wrong structure size", Native.POINTER_SIZE*2+8, s.size());
+        assertEquals("Wrong structure size", Native.POINTER_SIZE*2+8, s.size());
     }
 
     @Test
     public void testASCIIStructureSize() {
         ASCIILibrary.TestStructure s = new ASCIILibrary.TestStructure();
-        Assert.assertEquals("Wrong structure size", Native.POINTER_SIZE*2+8, s.size());
+        assertEquals("Wrong structure size", Native.POINTER_SIZE*2+8, s.size());
     }
 
     @Test
@@ -144,8 +147,8 @@ public class W32APIMapperTest {
         UnicodeLibrary.TestStructure s = new UnicodeLibrary.TestStructure();
         s.bool2 = true;
         s.write();
-        Assert.assertEquals("Wrong value written for FALSE", 0, s.getPointer().getInt(Native.POINTER_SIZE*2));
-        Assert.assertEquals("Wrong value written for TRUE", 1, s.getPointer().getInt(Native.POINTER_SIZE*2+4));
+        assertEquals("Wrong value written for FALSE", 0, s.getPointer().getInt(Native.POINTER_SIZE*2));
+        assertEquals("Wrong value written for TRUE", 1, s.getPointer().getInt(Native.POINTER_SIZE*2+4));
     }
 
     @Test
@@ -153,8 +156,8 @@ public class W32APIMapperTest {
         ASCIILibrary.TestStructure s = new ASCIILibrary.TestStructure();
         s.bool2 = true;
         s.write();
-        Assert.assertEquals("Wrong value written for FALSE", 0, s.getPointer().getInt(Native.POINTER_SIZE*2));
-        Assert.assertEquals("Wrong value written for TRUE", 1, s.getPointer().getInt(Native.POINTER_SIZE*2+4));
+        assertEquals("Wrong value written for FALSE", 0, s.getPointer().getInt(Native.POINTER_SIZE*2));
+        assertEquals("Wrong value written for TRUE", 1, s.getPointer().getInt(Native.POINTER_SIZE*2+4));
     }
 
     @Test
@@ -163,8 +166,8 @@ public class W32APIMapperTest {
         s.getPointer().setInt(Native.POINTER_SIZE*2, 1);
         s.getPointer().setInt(Native.POINTER_SIZE*2+4, 0);
         s.read();
-        Assert.assertTrue("Wrong value read for TRUE", s.bool);
-        Assert.assertFalse("Wrong value read for FALSE", s.bool2);
+        assertTrue("Wrong value read for TRUE", s.bool);
+        assertFalse("Wrong value read for FALSE", s.bool2);
     }
 
     @Test
@@ -173,8 +176,8 @@ public class W32APIMapperTest {
         s.getPointer().setInt(Native.POINTER_SIZE*2, 1);
         s.getPointer().setInt(Native.POINTER_SIZE*2+4, 0);
         s.read();
-        Assert.assertTrue("Wrong value read for TRUE", s.bool);
-        Assert.assertFalse("Wrong value read for FALSE", s.bool2);
+        assertTrue("Wrong value read for TRUE", s.bool);
+        assertFalse("Wrong value read for FALSE", s.bool2);
     }
 
     @Test
@@ -183,8 +186,8 @@ public class W32APIMapperTest {
         s.string = null;
         s.string2 = MAGIC;
         s.write();
-        Assert.assertEquals("Improper null write", null, s.getPointer().getPointer(0));
-        Assert.assertEquals("Improper string write", MAGIC, s.getPointer().getPointer(Native.POINTER_SIZE).getWideString(0));
+        assertEquals("Improper null write", null, s.getPointer().getPointer(0));
+        assertEquals("Improper string write", MAGIC, s.getPointer().getPointer(Native.POINTER_SIZE).getWideString(0));
     }
 
     @Test
@@ -193,8 +196,8 @@ public class W32APIMapperTest {
         s.string = null;
         s.string2 = MAGIC;
         s.write();
-        Assert.assertEquals("Improper null write", null, s.getPointer().getPointer(0));
-        Assert.assertEquals("Improper string write", MAGIC, s.getPointer().getPointer(Native.POINTER_SIZE).getString(0));
+        assertEquals("Improper null write", null, s.getPointer().getPointer(0));
+        assertEquals("Improper string write", MAGIC, s.getPointer().getPointer(Native.POINTER_SIZE).getString(0));
     }
 
     @Test
@@ -204,8 +207,8 @@ public class W32APIMapperTest {
         s.string2 = null;
         s.write();
         s.read();
-        Assert.assertEquals("Improper string read", MAGIC, s.string);
-        Assert.assertEquals("Improper null string read", null, s.string2);
+        assertEquals("Improper string read", MAGIC, s.string);
+        assertEquals("Improper null string read", null, s.string2);
     }
 
     @Test
@@ -215,7 +218,30 @@ public class W32APIMapperTest {
         s.string2 = null;
         s.write();
         s.read();
-        Assert.assertEquals("Improper string read", MAGIC, s.string);
-        Assert.assertEquals("Improper null string read: " + s, null, s.string2);
+        assertEquals("Improper string read", MAGIC, s.string);
+        assertEquals("Improper null string read: " + s, null, s.string2);
     }
+
+    @Test
+    public void testASCIIStructureReadString2() {
+        ASCIILibrary.TestStructure s = new ASCIILibrary.TestStructure();
+        String magic = "teståäö€";
+        s.string = magic;
+        s.string2 = null;
+        s.write();
+        s.read();
+        assertEquals("Improper string read", magic, s.string);
+        assertEquals("Improper null string read: " + s, null, s.string2);
+    }
+
+    @Test
+    public void testStringConversion() throws UnsupportedEncodingException {
+        String magic = "teståäö€";
+        String charsetName = "ISO-8859-1";
+        byte[] data = magic.getBytes(charsetName);
+        String converted = new String(data, charsetName);
+        assertEquals(magic, converted); // this fails, € is converted to ?
+        // apparently with older Java version this did not happen
+    }
+
 }

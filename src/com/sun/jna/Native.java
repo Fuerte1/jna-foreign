@@ -2707,9 +2707,11 @@ public final class Native implements Version {
             }
             return new String(data);
         }
-        Charset charset = Charset.defaultCharset();
+        Charset charset;
         if (encoding != null) {
             charset = Charset.forName(encoding);
+        } else {
+            charset = Charset.defaultCharset();
         }
         return Pointer.reinterpret(pointer.segment, -1).getString(pointer.getOffset(offset), charset);
     }

@@ -553,7 +553,7 @@ public class Function extends Pointer {
                     if (o instanceof MemorySegment seg) {
                         if (seg.address() != 0) {
                             return Pointer.reinterpret(seg, -1)
-                                    .getString(0, Charset.defaultCharset()); // TODO
+                                    .getString(0, Charset.forName(encoding));
                         }
                     }
                     return null;
@@ -731,42 +731,47 @@ public class Function extends Pointer {
             }
             this.downcallHandle = Linker.nativeLinker().downcallHandle(this.symbolAddress, fd);
         }
-        ArrayList<Runnable> converters = null;
+        Object[] foreignArgs = null;
         if (args != null) {
-            for (int i = 0, argsLength = args.length; i < argsLength; i++) {
-                Object a = args[i];
+            foreignArgs = new Object[args.length];
+            System.arraycopy(args, 0, foreignArgs, 0, args.length);
+        }
+        ArrayList<Runnable> converters = null;
+        if (foreignArgs != null) {
+            for (int i = 0, argsLength = foreignArgs.length; i < argsLength; i++) {
+                Object a = foreignArgs[i];
                 if (a == null) {
-                    args[i] = MemorySegment.NULL;
+                    foreignArgs[i] = MemorySegment.NULL;
                 } else if (isPrimitiveArray(a.getClass())) {
                     if (converters == null) converters = new ArrayList<>();
                     switch (a) {
                         case char[] array -> {
                             MemorySegment segment = arena.allocateFrom(JAVA_CHAR, array);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() ->
                                     segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().get(array));
                         }
                         case byte[] array -> {
                             MemorySegment segment = arena.allocateFrom(JAVA_BYTE, array);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() ->
                                     segment.asByteBuffer().get(array));
                         }
                         case int[] array -> {
                             MemorySegment segment = arena.allocateFrom(JAVA_INT, array);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() ->
                                     segment.asByteBuffer().order(ByteOrder.nativeOrder()).asIntBuffer().get(array));
                         }
                         case long[] array -> {
                             MemorySegment segment = arena.allocateFrom(JAVA_LONG, array);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() ->
                                     segment.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer().get(array));
                         }
                         case short[] array -> {
                             MemorySegment segment = arena.allocateFrom(JAVA_SHORT, array);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() ->
                                     segment.asByteBuffer().order(ByteOrder.nativeOrder()).asShortBuffer().get(array));
                         }
@@ -776,7 +781,7 @@ public class Function extends Pointer {
                                 bytes[j] = (byte) (array[j] ? 1 : 0);
                             }
                             MemorySegment segment = arena.allocateFrom(JAVA_BYTE, bytes);
-                            args[i] = segment;
+                            foreignArgs[i] = segment;
                             converters.add(() -> {
                                 segment.asByteBuffer().get(bytes);
                                 for (int j = 0; j < bytes.length; j++) {
@@ -789,21 +794,9 @@ public class Function extends Pointer {
                 } else if (a instanceof MemorySegmentReference ref) {
                     MemorySegment segment = ref.segment;
                     if (segment != null) {
-                        args[i] = ref.segment;
-                        if (a instanceof StringArray stringArray) {
-                            // re-read array members back to original array
-                            if (converters == null) converters = new ArrayList<>();
-                            converters.add(() -> {
-//                                for (int j = 0; j < stringArray.setString();)
-//                                segment.asByteBuffer().get(bytes);
-//                                for (int j = 0; j < bytes.length; j++) {
-//                                    array[j] = bytes[j] != 0;
-//                                }
-
-                            });
-                        }
+                        foreignArgs[i] = ref.segment;
                     } else if (a instanceof Pointer pointer) {
-                        args[i] = MemorySegment.ofAddress(pointer.peer);
+                        foreignArgs[i] = MemorySegment.ofAddress(pointer.peer);
                     } else if (a instanceof Structure.ByValue _
                             && a instanceof Structure structure) {
                         int size = structure.size();
@@ -819,16 +812,16 @@ public class Function extends Pointer {
                             value <<= 8;
                             value |= bytes[j] & 0xff;
                         }
-                        args[i] = value;
+                        foreignArgs[i] = value;
                     } else {
-                        args[i] = MemorySegment.NULL;
+                        foreignArgs[i] = MemorySegment.NULL;
                     }
                 }
             }
         }
         Object result;
         try {
-            result = this.downcallHandle.invokeWithArguments(args);
+            result = this.downcallHandle.invokeWithArguments(foreignArgs);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
