@@ -666,12 +666,12 @@ public class Pointer extends MemorySegmentReference {
         return Native.getPointer(this, offset);
     }
 
-    public void reinterpret(long offset, long size) {
-        reinterpret(offset + size);
+    public MemorySegment reinterpret(long offset, long size) {
+        return reinterpret(offset + size);
     }
 
-    public void reinterpret(long newSize) {
-        segment = reinterpret(segment, newSize);
+    public MemorySegment reinterpret(long newSize) {
+        return segment = reinterpret(segment, newSize);
     }
 
     public static MemorySegment reinterpret(MemorySegment seg, long newSize) {
@@ -1256,11 +1256,11 @@ public class Pointer extends MemorySegmentReference {
             throw new UnsupportedOperationException(MSG);
         }
         @Override
-        public void reinterpret(long newSize) {
+        public MemorySegment reinterpret(long newSize) {
             throw new UnsupportedOperationException(MSG);
         }
         @Override
-        public void reinterpret(long offset, long size) {
+        public MemorySegment reinterpret(long offset, long size) {
             throw new UnsupportedOperationException(MSG);
         }
         @Override

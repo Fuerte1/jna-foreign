@@ -26,12 +26,9 @@ package com.sun.jna.win32;
 import java.util.Arrays;
 import java.util.List;
 
+import com.sun.jna.*;
 import junit.framework.TestCase;
 
-import com.sun.jna.Library;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

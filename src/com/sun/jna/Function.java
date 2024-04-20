@@ -346,7 +346,7 @@ public class Function extends Pointer {
      * the method has to be in the options under key {@link Function#OPTION_INVOKING_METHOD}.
      */
     Object invoke(Method invokingMethod, Class<?>[] paramTypes, Class<?> returnType, Object[] inArgs, Map<String, ?> options) {
-        try (Arena arena = Arena.ofConfined()) {
+        try (Arena arena = Native.arenaConfined()) {
             // Clone the argument array to obtain a scratch space for modified
             // types/values
             Object[] args = {};
@@ -431,7 +431,7 @@ public class Function extends Pointer {
 
     /* @see NativeLibrary#NativeLibrary(String,String,long,Map) implementation */
     Object invoke(Object[] args, Class<?> returnType, boolean allowObjects) {
-        try (Arena arena = Arena.ofConfined()) {
+        try (Arena arena = Native.arenaConfined()) {
             return invoke(arena, args, returnType, allowObjects, 0);
         }
     }
@@ -739,22 +739,69 @@ public class Function extends Pointer {
                     args[i] = MemorySegment.NULL;
                 } else if (isPrimitiveArray(a.getClass())) {
                     if (converters == null) converters = new ArrayList<>();
-                    if (a instanceof char[] array) {
-                        MemorySegment segment = arena.allocateFrom(JAVA_CHAR, array);
-                        args[i] = segment;
-                        converters.add(() ->
-                                segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().get(array));
-                    } else if (a instanceof byte[] array) {
-                        MemorySegment segment = arena.allocateFrom(JAVA_BYTE, array);
-                        args[i] = segment;
-                        converters.add(() ->
-                                segment.asByteBuffer().get(array));
-                    } else {
-                        throw new UnsupportedOperationException("Convert: " + a);
+                    switch (a) {
+                        case char[] array -> {
+                            MemorySegment segment = arena.allocateFrom(JAVA_CHAR, array);
+                            args[i] = segment;
+                            converters.add(() ->
+                                    segment.asByteBuffer().order(ByteOrder.nativeOrder()).asCharBuffer().get(array));
+                        }
+                        case byte[] array -> {
+                            MemorySegment segment = arena.allocateFrom(JAVA_BYTE, array);
+                            args[i] = segment;
+                            converters.add(() ->
+                                    segment.asByteBuffer().get(array));
+                        }
+                        case int[] array -> {
+                            MemorySegment segment = arena.allocateFrom(JAVA_INT, array);
+                            args[i] = segment;
+                            converters.add(() ->
+                                    segment.asByteBuffer().order(ByteOrder.nativeOrder()).asIntBuffer().get(array));
+                        }
+                        case long[] array -> {
+                            MemorySegment segment = arena.allocateFrom(JAVA_LONG, array);
+                            args[i] = segment;
+                            converters.add(() ->
+                                    segment.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer().get(array));
+                        }
+                        case short[] array -> {
+                            MemorySegment segment = arena.allocateFrom(JAVA_SHORT, array);
+                            args[i] = segment;
+                            converters.add(() ->
+                                    segment.asByteBuffer().order(ByteOrder.nativeOrder()).asShortBuffer().get(array));
+                        }
+                        case boolean[] array -> {
+                            byte[] bytes = new byte[array.length];
+                            for (int j = 0; j < bytes.length; j++) {
+                                bytes[j] = (byte) (array[j] ? 1 : 0);
+                            }
+                            MemorySegment segment = arena.allocateFrom(JAVA_BYTE, bytes);
+                            args[i] = segment;
+                            converters.add(() -> {
+                                segment.asByteBuffer().get(bytes);
+                                for (int j = 0; j < bytes.length; j++) {
+                                    array[j] = bytes[j] != 0;
+                                }
+                            });
+                        }
+                        default -> throw new UnsupportedOperationException("Convert: " + a);
                     }
                 } else if (a instanceof MemorySegmentReference ref) {
-                    if (ref.segment != null) {
+                    MemorySegment segment = ref.segment;
+                    if (segment != null) {
                         args[i] = ref.segment;
+                        if (a instanceof StringArray stringArray) {
+                            // re-read array members back to original array
+                            if (converters == null) converters = new ArrayList<>();
+                            converters.add(() -> {
+//                                for (int j = 0; j < stringArray.setString();)
+//                                segment.asByteBuffer().get(bytes);
+//                                for (int j = 0; j < bytes.length; j++) {
+//                                    array[j] = bytes[j] != 0;
+//                                }
+
+                            });
+                        }
                     } else if (a instanceof Pointer pointer) {
                         args[i] = MemorySegment.ofAddress(pointer.peer);
                     } else if (a instanceof Structure.ByValue _

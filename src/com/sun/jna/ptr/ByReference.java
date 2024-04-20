@@ -62,21 +62,21 @@ public abstract class ByReference extends PointerType {
         setPointer(new Memory(arena, dataSize));
     }
 
-    // crashes in debugger
-//    @Override
-//    public String toString() {
-//        try {
-//            Method getValue = getClass().getMethod("getValue");
-//            Object value = getValue.invoke(this);
-//            if (value == null) {
-//                return String.format("null@0x%x", Pointer.nativeValue(getPointer()));
-//            }
-//            return String.format("%s@0x%x=%s", value.getClass().getSimpleName(), Pointer.nativeValue(getPointer()),
-//                    value);
-//        } catch (Exception ex) {
-//            return String.format("ByReference Contract violated - %s#getValue raised exception: %s",
-//                    getClass().getName(), ex.getMessage());
-//        }
-//    }
+    // crashes in debugger?
+    @Override
+    public String toString() {
+        try {
+            Method getValue = getClass().getMethod("getValue");
+            Object value = getValue.invoke(this);
+            if (value == null) {
+                return String.format("null@0x%x", Pointer.nativeValue(getPointer()));
+            }
+            return String.format("%s@0x%x=%s", value.getClass().getSimpleName(), Pointer.nativeValue(getPointer()),
+                    value);
+        } catch (Exception ex) {
+            return String.format("ByReference Contract violated - %s#getValue raised exception: %s",
+                    getClass().getName(), ex.getMessage());
+        }
+    }
 
 }

@@ -131,7 +131,7 @@ public final class Native implements Version {
     // "jna.jni" system property
     // false: Foreign Function & Memory API (FFM) is used (java.lang.foreign), no JNI
     // true: jnidispatch is used
-    public static final boolean jni = getBoolean("jna.jni", true); // should be false
+    public static final boolean jni = getBoolean("jna.jni", false); // change to false before commit
     private static final boolean IGNORE_JNI_VERSION = getBoolean("jna.ignore.version", true);
 
     public static final Charset DEFAULT_CHARSET;
@@ -251,8 +251,17 @@ public final class Native implements Version {
         if (jni) {
             return null;
         }
-        return Native.arenaAuto();
+        return Arena.ofAuto();
     }
+
+    static Arena arenaConfined() {
+        if (jni) {
+            return null;
+        }
+        return Arena.ofConfined();
+    }
+
+    static public boolean isWindows = Platform.isWindows();
 
     static {
         if (jni) {
@@ -296,9 +305,11 @@ public final class Native implements Version {
             ? 8 : LONG_SIZE;
         MAX_PADDING = (Platform.isMac() && Platform.isPPC()) ? 8 : MAX_ALIGNMENT;
         System.setProperty("jna.loaded", "true");
-        int err = getLastErrorFfm();
-        if (err != 0) {
-            LOG.severe("GetLastError = " + err);
+        if (!jni) {
+            int err = Native.getLastErrorFfm();
+            if (err != 0) {
+                LOG.severe("GetLastError = " + err);
+            }
         }
     }
 
@@ -678,7 +689,7 @@ public final class Native implements Version {
      * dependent libraries are missing.
      */
     public static <T extends Library> T load(String name, Class<T> interfaceClass, Map<String, ?> options) {
-        return load(name, interfaceClass, options, false);
+        return load(name, interfaceClass, options, Native.jni);
     }
 
     public static <T extends Library> T load(String name, Class<T> interfaceClass, Map<String, ?> options,
@@ -1304,9 +1315,22 @@ public final class Native implements Version {
      */
     private static native int getLastError();
 
+    public static ForeignFunction ffGetLastError = null;
+
     public static int getLastErrorFfm() {
         if (jni) {
             return getLastError();
+        }
+        if (!Platform.isWindows()) {
+            return 0;
+        }
+        if (ffGetLastError == null) {
+            ffGetLastError = new ForeignFunction(() ->
+                    SymbolLookup.libraryLookup("kernel32", Native.arenaGlobal),
+                    "GetLastError",
+                    FunctionDescriptor.of(
+                            JAVA_INT // error code, 0 = success
+                    ));
         }
         try {
             return (int) ffGetLastError.get().invoke();
@@ -1314,13 +1338,6 @@ public final class Native implements Version {
             throw new RuntimeException(e);
         }
     }
-
-    public static ForeignFunction ffGetLastError = new ForeignFunction(() ->
-            NativeLibrary.getSymbolLookup("kernel32").getKey(),
-            "GetLastError",
-            FunctionDescriptor.of(
-                    JAVA_INT // error code, 0 = success
-            ));
 
     /** Set the OS last error code.  The value will be saved on a per-thread
      * basis.
@@ -1889,7 +1906,7 @@ public final class Native implements Version {
      * should be bound
      */
     public static void register(Class<?> cls, String libName) {
-        register(cls, libName, false);
+        register(cls, libName, Native.jni);
     }
 
     public static void register(Class<?> cls, String libName, boolean jni) {
@@ -2394,8 +2411,8 @@ public final class Native implements Version {
 
     private static ByteBuffer getByteBuffer(Pointer pointer, ValueLayout valueLayout, long offset, int length) {
         offset += pointer.getOffset();
-        pointer.reinterpret(offset, length * valueLayout.byteSize());
-        return pointer.segment.asByteBuffer()
+        return pointer.reinterpret(offset, length * valueLayout.byteSize())
+                .asByteBuffer()
                 .position((int) offset);
     }
 
@@ -2577,9 +2594,9 @@ public final class Native implements Version {
         if (jni) {
             return getByte(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_BYTE.byteSize());
-        return pointer.segment.get(JAVA_BYTE, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_BYTE.byteSize())
+            .get(JAVA_BYTE, offset);
     }
 
     private static native char getChar(Pointer pointer, long baseaddr, long offset);
@@ -2588,9 +2605,9 @@ public final class Native implements Version {
         if (jni) {
             return getChar(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_CHAR.byteSize());
-        return pointer.segment.get(JAVA_CHAR, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_CHAR.byteSize())
+            .get(JAVA_CHAR, offset);
     }
 
     private static native short getShort(Pointer pointer, long baseaddr, long offset);
@@ -2599,9 +2616,9 @@ public final class Native implements Version {
         if (jni) {
             return getShort(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_SHORT.byteSize());
-        return pointer.segment.get(JAVA_SHORT, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_SHORT.byteSize())
+                .get(JAVA_SHORT, offset);
     }
 
     private static native int getInt(Pointer pointer, long baseaddr, long offset);
@@ -2610,9 +2627,9 @@ public final class Native implements Version {
         if (jni) {
             return getInt(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_INT.byteSize());
-        return pointer.segment.get(JAVA_INT, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_INT.byteSize())
+                .get(JAVA_INT, offset);
     }
 
     private static native long getLong(Pointer pointer, long baseaddr, long offset);
@@ -2621,9 +2638,9 @@ public final class Native implements Version {
         if (jni) {
             return getLong(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_LONG.byteSize());
-        return pointer.segment.get(JAVA_LONG, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_LONG.byteSize())
+                .get(JAVA_LONG, offset);
     }
 
     private static native float getFloat(Pointer pointer, long baseaddr, long offset);
@@ -2632,9 +2649,9 @@ public final class Native implements Version {
         if (jni) {
             return getFloat(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_FLOAT.byteSize());
-        return pointer.segment.get(JAVA_FLOAT, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_FLOAT.byteSize())
+                .get(JAVA_FLOAT, offset);
     }
 
     private static native double getDouble(Pointer pointer, long baseaddr, long offset);
@@ -2643,9 +2660,9 @@ public final class Native implements Version {
         if (jni) {
             return getDouble(pointer, baseaddr, offset);
         }
-        int offs = pointer.getOffset(offset);
-        pointer.reinterpret(offs, JAVA_DOUBLE.byteSize());
-        return pointer.segment.get(JAVA_DOUBLE, offs);
+        offset += pointer.getOffset();
+        return pointer.reinterpret(offset, JAVA_DOUBLE.byteSize())
+                .get(JAVA_DOUBLE, offset);
     }
 
     static Pointer getPointer(Pointer pointer, long offset) {
@@ -2653,14 +2670,14 @@ public final class Native implements Version {
             long peer = _getPointer(pointer.peer + offset);
             return peer == 0 ? null : new Pointer(peer);
         }
-        long newOffset = offset + pointer.getOffset();
-        pointer.reinterpret(newOffset, ADDRESS.byteSize());
-        MemorySegment segment1 = pointer.segment.get(ADDRESS_UNALIGNED, newOffset);
-        long address = segment1.address();
+        offset += pointer.getOffset();
+        MemorySegment seg = pointer.reinterpret(offset, ADDRESS.byteSize())
+                .get(ADDRESS_UNALIGNED, offset);
+        long address = seg.address();
         if (address == 0) {
             return null;
         }
-        return new Pointer(arenaGlobal, segment1);
+        return new Pointer(null, seg);
     }
 
     private static native long _getPointer(long addr);
@@ -2671,8 +2688,8 @@ public final class Native implements Version {
         if (jni) {
             return getWideString(pointer, baseaddr, offset);
         }
-        pointer.reinterpret(-1);
-        return pointer.segment.getString(offset, StandardCharsets.UTF_16LE);
+        return pointer.reinterpret(-1)
+            .getString(offset, StandardCharsets.UTF_16LE);
     }
 
     static String getString(Pointer pointer, long offset) {
@@ -2719,8 +2736,9 @@ public final class Native implements Version {
             setByte(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_BYTE, offset)
-            .put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_BYTE.byteSize())
+                .set(JAVA_BYTE, offset, value);
     }
 
     private static native void setShort(Pointer pointer, long baseaddr, long offset, short value);
@@ -2730,8 +2748,9 @@ public final class Native implements Version {
             setShort(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_SHORT, offset)
-            .asShortBuffer().put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_SHORT.byteSize())
+                .set(JAVA_SHORT, offset, value);
     }
 
     private static native void setChar(Pointer pointer, long baseaddr, long offset, char value);
@@ -2741,8 +2760,9 @@ public final class Native implements Version {
             setChar(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_CHAR, offset)
-            .asCharBuffer().put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_CHAR.byteSize())
+                .set(JAVA_CHAR, offset, value);
     }
 
     private static native void setInt(Pointer pointer, long baseaddr, long offset, int value);
@@ -2752,8 +2772,9 @@ public final class Native implements Version {
             setInt(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_INT, offset)
-            .asIntBuffer().put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_INT.byteSize())
+                .set(JAVA_INT, offset, value);
     }
 
     static native void setLong(Pointer pointer, long baseaddr, long offset, long value);
@@ -2763,8 +2784,9 @@ public final class Native implements Version {
             setLong(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_INT, offset)
-                .asLongBuffer().put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_LONG.byteSize())
+            .set(JAVA_LONG, offset, value);
     }
 
     static native void setFloat(Pointer pointer, long baseaddr, long offset, float value);
@@ -2774,8 +2796,9 @@ public final class Native implements Version {
             setFloat(pointer, baseaddr, offset, value);
             return;
         }
-        getByteBuffer(pointer, JAVA_FLOAT, offset)
-                .asFloatBuffer().put(value);
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_FLOAT.byteSize())
+                .set(JAVA_FLOAT, offset, value);
     }
 
     static native void setDouble(Pointer pointer, long baseaddr, long offset, double value);
@@ -2786,8 +2809,8 @@ public final class Native implements Version {
             return;
         }
         offset += pointer.getOffset();
-        pointer.reinterpret(offset, JAVA_DOUBLE.byteSize());
-        pointer.segment.set(JAVA_DOUBLE, offset, value);
+        pointer.reinterpret(offset, JAVA_DOUBLE.byteSize())
+                .set(JAVA_DOUBLE, offset, value);
     }
 
     private static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
@@ -2797,15 +2820,10 @@ public final class Native implements Version {
             setPointer(pointer, baseaddr, offset, value != null ? value.peer : 0);
             return;
         }
+        MemorySegment seg = value == null ? MemorySegment.NULL : value.segment;
         offset += pointer.getOffset();
-        pointer.reinterpret(offset, ADDRESS.byteSize());
-        MemorySegment seg;
-        if (value != null) {
-            seg = value.segment;
-        } else {
-            seg = MemorySegment.NULL;
-        }
-        pointer.segment.set(ADDRESS_UNALIGNED, offset, seg);
+        pointer.reinterpret(offset, ADDRESS.byteSize())
+                .set(ADDRESS_UNALIGNED, offset, seg);
     }
 
     private static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
