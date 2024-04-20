@@ -694,8 +694,7 @@ public class Pointer extends MemorySegmentReference {
      * @return a direct ByteBuffer that accesses the memory being pointed to,
      */
     public ByteBuffer getByteBuffer(long offset, long length) {
-//        return Native.getDirectByteBuffer(this, this.peer, offset, length).order(ByteOrder.nativeOrder());
-        return segment.asByteBuffer().slice((int) offset, (int) length);
+        return Native.getDirectByteBufferFfm(this, this.peer, offset, length).order(ByteOrder.nativeOrder());
     }
 
     /** Read a wide (<code>const wchar_t *</code>) string from memory. */
@@ -931,7 +930,7 @@ public class Pointer extends MemorySegmentReference {
         } else if (NativeMapped.class.isAssignableFrom(type)) {
             NativeMappedConverter tc = NativeMappedConverter.getInstance(type);
             Class<?> nativeType = tc.nativeType();
-            setValue(offset, tc.toNative(value, new ToNativeContext(Arena.ofAuto())), nativeType); // TODO
+            setValue(offset, tc.toNative(value, new ToNativeContext(Native.arenaAuto())), nativeType); // TODO
         } else if (type.isArray()) {
             writeArray(offset, value, type.getComponentType());
         } else {
@@ -1153,14 +1152,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value  <code>java.lang.String</code> value to set
      */
     public void setWideString(long offset, String value) {
-//        Native.setWideString(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.asByteBuffer()
-                .position((int) offset)
-                .order(ByteOrder.nativeOrder())
-                .asCharBuffer()
-                .put(value)
-                .put('\0');
+        Native.setWideStringFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1199,7 +1191,6 @@ public class Pointer extends MemorySegmentReference {
      */
     public void setString(long offset, String value, String encoding) {
         byte[] data = Native.getBytes(value, encoding);
-        offset += getOffset();
         write(offset, data, 0, data.length);
         setByte(offset + data.length, (byte)0);
     }
@@ -1254,6 +1245,22 @@ public class Pointer extends MemorySegmentReference {
         }
         @Override
         public void clear(long size) {
+            throw new UnsupportedOperationException(MSG);
+        }
+        @Override
+        long getOffset() {
+            throw new UnsupportedOperationException(MSG);
+        }
+        @Override
+        public int getOffset(long offset) {
+            throw new UnsupportedOperationException(MSG);
+        }
+        @Override
+        public void reinterpret(long newSize) {
+            throw new UnsupportedOperationException(MSG);
+        }
+        @Override
+        public void reinterpret(long offset, long size) {
             throw new UnsupportedOperationException(MSG);
         }
         @Override

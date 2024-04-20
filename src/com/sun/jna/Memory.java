@@ -117,7 +117,7 @@ public class Memory extends Pointer implements Closeable {
      * @param size number of <em>bytes</em> of space to allocate
      */
     public Memory(long size) {
-        this(Arena.ofAuto(), size);
+        this(Native.arenaAuto(), size);
     }
 
     public Memory(Arena arena, long size) {
@@ -126,13 +126,17 @@ public class Memory extends Pointer implements Closeable {
         if (size <= 0) {
             throw new IllegalArgumentException("Allocation size must be greater than zero");
         }
-        segment = arena.allocate(size);
-        peer = segment.address();
-        if (peer == 0)
-            throw new OutOfMemoryError("Cannot allocate " + size + " bytes");
-//        allocatedMemory.put(peer, new WeakReference<>(this));
-//        cleanable = Cleaner.getCleaner().register(this, new MemoryDisposer(peer));
-        cleanable = null;
+        if (arena != null) {
+            segment = arena.allocate(size);
+            peer = segment.address();
+            cleanable = null;
+        } else {
+            peer = malloc(size);
+            if (peer == 0)
+                throw new OutOfMemoryError("Cannot allocate " + size + " bytes");
+            allocatedMemory.put(peer, new WeakReference<>(this));
+            cleanable = Cleaner.getCleaner().register(this, new MemoryDisposer(peer));
+        }
     }
 
     protected Memory() {
@@ -759,13 +763,12 @@ public class Memory extends Pointer implements Closeable {
     protected static void free(long p) {
         // free(0) is a no-op, so avoid the overhead of the call
         if (p != 0) {
-            Native.free(p);
+            Native.freeFfm(p);
         }
     }
 
-    @Deprecated
     protected static long malloc(long size) {
-        return Native.malloc(size);
+        return Native.mallocFfm(size);
     }
 
     /** Dumps the contents of this memory object. */

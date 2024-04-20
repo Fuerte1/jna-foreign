@@ -27,7 +27,6 @@ package com.sun.jna;
 
 import com.sun.jna.internal.Cleaner;
 import static com.sun.jna.Native.DEBUG_LOAD;
-import static com.sun.jna.Native.jni;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -188,7 +187,7 @@ public class NativeLibrary implements Closeable {
             if (LIBRARY_NAME_PROCESS.equals(libraryName)) {
                 lookup = SymbolLookup.loaderLookup();
             } else {
-                lookup = SymbolLookup.libraryLookup(libraryName, Native.arena);
+                lookup = SymbolLookup.libraryLookup(libraryName, Native.arenaGlobal);
             }
             resourceLibrares.put(libraryName, lookup);
             return new AbstractMap.SimpleEntry<>(lookup, libraryName);
@@ -208,7 +207,7 @@ public class NativeLibrary implements Closeable {
                 if (resource != null) {
                     try {
                         Path path = Path.of(resource.toURI());
-                        lookup = SymbolLookup.libraryLookup(path, Native.arena);
+                        lookup = SymbolLookup.libraryLookup(path, Native.arenaGlobal);
                         resourceLibrares.put(libraryName, lookup);
                         return new AbstractMap.SimpleEntry<>(lookup, path.toString());
                     } catch (URISyntaxException | IllegalArgumentException _) {
@@ -515,7 +514,7 @@ public class NativeLibrary implements Closeable {
      * @param libraryOptions Native library options for the given library (see {@link Library}).
      */
     public static final NativeLibrary getInstance(String libraryName, Map<String, ?> libraryOptions) {
-        return getInstance(libraryName, libraryOptions, false);
+        return getInstance(libraryName, libraryOptions, Native.jni);
     }
 
     public static final NativeLibrary getInstance(String libraryName, Map<String, ?> libraryOptions,

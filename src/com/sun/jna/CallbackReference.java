@@ -665,7 +665,7 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
 
         private Object convertResult(Object value) {
             if (toNative != null) {
-                value = toNative.toNative(value, new CallbackResultContext(Arena.ofAuto(), callbackMethod));
+                value = toNative.toNative(value, new CallbackResultContext(Native.arenaAuto(), callbackMethod));
             }
             if (value == null) {
                 return null;

@@ -48,6 +48,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -65,7 +66,6 @@ import java.util.WeakHashMap;
 
 import com.sun.jna.Callback.UncaughtExceptionHandler;
 import com.sun.jna.Structure.FFIType;
-//import com.sun.jna.platform.win32.Kernel32Util;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -152,8 +152,10 @@ public final class Native implements Version {
         if (nativeEncoding != null) {
             try {
                 nativeCharset = Charset.forName(nativeEncoding);
-                if ("windows-1252".equals(nativeCharset.name())) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
-                    nativeCharset = StandardCharsets.ISO_8859_1; // Latin-1
+                if (!jni) {
+                    if ("windows-1252".equals(nativeCharset.name())) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
+                        nativeCharset = StandardCharsets.ISO_8859_1; // Latin-1, almost the same as windows-1252
+                    }
                 }
             } catch (Exception ex) {
                 LOG.log(Level.WARNING, "Failed to get charset for native.encoding value : '" + nativeEncoding + "'", ex);
@@ -241,9 +243,16 @@ public final class Native implements Version {
         return true;
     }
 
-    static Arena arena = Arena.global();
+    static Arena arenaGlobal = Arena.global();
 
     static ConcurrentHashMap<Long, MemorySegment> arenaMap = new ConcurrentHashMap<>();
+
+    static Arena arenaAuto() {
+        if (jni) {
+            return null;
+        }
+        return Native.arenaAuto();
+    }
 
     static {
         if (jni) {
@@ -2129,7 +2138,7 @@ public final class Native implements Version {
     private static Object toNative(ToNativeConverter cvt, Object o) {
         // NOTE: technically should be either CallbackResultContext or
         // FunctionParameterContext
-        return cvt.toNative(o, new ToNativeContext(Arena.ofAuto()));
+        return cvt.toNative(o, new ToNativeContext(Native.arenaAuto()));
     }
     // Called from native code
     private static Object fromNative(FromNativeConverter cvt, Object o, Method m) {
@@ -2651,7 +2660,7 @@ public final class Native implements Version {
         if (address == 0) {
             return null;
         }
-        return new Pointer(arena, segment1);
+        return new Pointer(arenaGlobal, segment1);
     }
 
     private static native long _getPointer(long addr);
@@ -2799,9 +2808,31 @@ public final class Native implements Version {
         pointer.segment.set(ADDRESS_UNALIGNED, offset, seg);
     }
 
-//    static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
+    private static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
 
-    static native ByteBuffer getDirectByteBuffer(Pointer pointer, long addr, long offset, long length);
+    static void setWideStringFfm(Pointer pointer, long baseaddr, long offset, String value) {
+        if (jni) {
+            setWideString(pointer, baseaddr, offset, value);
+            return;
+        }
+        offset += pointer.getOffset();
+        pointer.segment.asByteBuffer()
+                .position((int) offset)
+                .order(ByteOrder.nativeOrder())
+                .asCharBuffer()
+                .put(value)
+                .put('\0');
+
+    }
+
+    private static native ByteBuffer getDirectByteBuffer(Pointer pointer, long addr, long offset, long length);
+
+    static ByteBuffer getDirectByteBufferFfm(Pointer pointer, long addr, long offset, long length) {
+        if (jni) {
+            return getDirectByteBuffer(pointer, addr, offset, length);
+        }
+        return pointer.segment.asByteBuffer().slice((int) offset, (int) length);
+    }
 
     /**
      * Call the real native malloc
@@ -2809,11 +2840,13 @@ public final class Native implements Version {
      * @return native address of the allocated memory block; zero if the
      * allocation failed.
      */
-//    public static native long malloc(long size);
+    private static native long malloc(long size);
 
-    @Deprecated
-    public static long malloc(long size) {
-        MemorySegment segment = arena.allocate(size);
+    public static long mallocFfm(long size) {
+        if (jni) {
+            return malloc(size);
+        }
+        MemorySegment segment = arenaGlobal.allocate(size);
         long address = segment.address();
         arenaMap.put(address, segment);
         return address;
@@ -2824,9 +2857,13 @@ public final class Native implements Version {
      * @param ptr native address to be freed; a value of zero has no effect,
      * passing an already-freed pointer will cause pain.
      */
-//    public static native void free(long ptr);
+    private static native void free(long ptr);
 
-    public static void free(long ptr) {
+    public static void freeFfm(long ptr) {
+        if (jni) {
+            free(ptr);
+            return;
+        }
         MemorySegment segment = arenaMap.remove(ptr);
         if (segment != null) {
             segment.unload();

@@ -101,7 +101,7 @@ class JnafAdvapi32UtilTest {
         assertEquals("DESKTOP-B8CLTBS\\harry", account.fqn);
         assertEquals(28, account.sid.length);
         assertEquals("S-1-5-21-4160134898-1683524527-1113683188-1001", account.sidString);
-        account = Advapi32Util.getAccountBySid(account.sidString); // EXCEPTION_ACCESS_VIOLATION when debugging
+        account = Advapi32Util.getAccountBySid(account.sidString);
         assertNotNull(account);
         assertEquals("harry", account.name);
         for (int i = WinNT.WELL_KNOWN_SID_TYPE.WinNullSid;

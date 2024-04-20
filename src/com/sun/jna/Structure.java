@@ -31,8 +31,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -55,8 +53,6 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static java.lang.foreign.ValueLayout.ADDRESS;
 
 /**
  * Represents a native structure with a Java peer class.  When used as a
@@ -872,7 +868,7 @@ public abstract class Structure extends MemorySegmentReference {
         Class<?> fieldType = structField.type;
         ToNativeConverter converter = structField.writeConverter;
         if (converter != null) {
-            value = converter.toNative(value, new StructureWriteContext(Arena.ofAuto(),this, structField.field)); // TODO
+            value = converter.toNative(value, new StructureWriteContext(Native.arenaAuto(),this, structField.field)); // TODO
             fieldType = converter.nativeType();
         }
 
@@ -1343,7 +1339,7 @@ public abstract class Structure extends MemorySegmentReference {
                 FromNativeConverter readConverter = typeMapper.getFromNativeConverter(type);
                 if (writeConverter != null && readConverter != null) {
                     value = writeConverter.toNative(value,
-                                                    new StructureWriteContext(Arena.ofAuto(), this, structField.field)); // TODO
+                                                    new StructureWriteContext(Native.arenaAuto(), this, structField.field)); // TODO
                     nativeType = value != null ? value.getClass() : Pointer.class;
                     structField.writeConverter = writeConverter;
                     structField.readConverter = readConverter;
@@ -1491,7 +1487,7 @@ public abstract class Structure extends MemorySegmentReference {
         if (NativeMapped.class.isAssignableFrom(type)) {
             NativeMappedConverter tc = NativeMappedConverter.getInstance(type);
             type = tc.nativeType();
-            value = tc.toNative(value, new ToNativeContext(Arena.ofAuto())); // TODO
+            value = tc.toNative(value, new ToNativeContext(Native.arenaAuto())); // TODO
         }
         int size = Native.getNativeSize(type, value);
         if (type.isPrimitive() || Long.class == type || Integer.class == type
@@ -1766,7 +1762,7 @@ public abstract class Structure extends MemorySegmentReference {
             ToNativeConverter nc = typeMapper.getToNativeConverter(type);
             if (nc != null) {
                 type = nc.nativeType();
-                value = nc.toNative(value, new ToNativeContext(Arena.ofAuto())); // TODO
+                value = nc.toNative(value, new ToNativeContext(Native.arenaAuto())); // TODO
             }
         }
         return FFIType.get(value, type);
@@ -1995,19 +1991,19 @@ public abstract class Structure extends MemorySegmentReference {
 //                public short alignment;               // 2 => 4 ?
 //                public short type = FFI_TYPE_STRUCT;  // 2 => 4 ?
 //                public Pointer elements;              // 8
-                ffi_type_void = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_float = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_double = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_longdouble = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_uint8 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_sint8 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_uint16 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_sint16 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_uint32 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_sint32 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_uint64 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_sint64 = new Pointer(Native.arena, Native.arena.allocate(size));
-                ffi_type_pointer = new Pointer(Native.arena, Native.arena.allocate(size));
+                ffi_type_void = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_float = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_double = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_longdouble = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_uint8 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_sint8 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_uint16 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_sint16 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_uint32 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_sint32 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_uint64 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_sint64 = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
+                ffi_type_pointer = new Pointer(Native.arenaGlobal, Native.arenaGlobal.allocate(size));
             }
         }
 
@@ -2214,7 +2210,7 @@ public abstract class Structure extends MemorySegmentReference {
                 }
                 if (NativeMapped.class.isAssignableFrom(cls)) {
                     NativeMappedConverter c = NativeMappedConverter.getInstance(cls);
-                    return get(c.toNative(obj, new ToNativeContext(Arena.ofAuto())), c.nativeType()); // TODO
+                    return get(c.toNative(obj, new ToNativeContext(Native.arenaAuto())), c.nativeType()); // TODO
                 }
                 if (cls.isArray()) {
                     FFIType type = new FFIType(obj, cls);

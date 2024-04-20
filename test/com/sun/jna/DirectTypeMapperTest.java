@@ -219,7 +219,7 @@ public class DirectTypeMapperTest extends TestCase {
                     PointTestClass pc = new PointTestClass();
                     pc.x = p.getInt(0);
                     pc.y = p.getInt(4);
-                    Native.free(Pointer.nativeValue(p));
+                    Native.freeFfm(Pointer.nativeValue(p));
                     return pc;
                 }
                 @Override
