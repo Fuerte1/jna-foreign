@@ -38,24 +38,16 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
  */
 public class PointerByReference extends ByReference {
 
-    @Deprecated
     public PointerByReference() {
         this((Pointer) null);
-//        arena = Arena.ofAuto();
-//        segment = arena.allocate(ADDRESS.withTargetLayout(ADDRESS));
     }
 
     public PointerByReference(Arena arena) {
         this(arena, null);
-//        this.arena = arena;
-//        segment = arena.allocate(ADDRESS);
     }
 
-    @Deprecated
     public PointerByReference(Pointer value) {
         super(Native.POINTER_SIZE);
-//        arena = value.arena;
-//        segment = arena.allocate(ADDRESS);
         setValue(value);
     }
 
@@ -66,17 +58,14 @@ public class PointerByReference extends ByReference {
 
     public void setValue(Pointer value) {
         getPointer().setPointer(0, value);
-//        segment.set(JAVA_LONG, 0, value.getLong(0)); // TODO ???
     }
 
     public Pointer getValue() {
         return getPointer().getPointer(0);
-//        return new Pointer(arena, segment);
     }
 
     public Pointer getPointer() {
         return super.getPointer();
-//        return new Pointer(arena, segment);
     }
 
 }

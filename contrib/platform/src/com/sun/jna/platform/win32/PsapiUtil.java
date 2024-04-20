@@ -78,8 +78,8 @@ public abstract class PsapiUtil {
             int length = Psapi.INSTANCE.GetProcessImageFileName(hProcess,
                 filePath, filePath.length);
             if(length == 0) {
-                if(Native.getLastError() != WinError.ERROR_INSUFFICIENT_BUFFER) {
-                    throw new Win32Exception(Native.getLastError());
+                if(Native.getLastErrorFfm() != WinError.ERROR_INSUFFICIENT_BUFFER) {
+                    throw new Win32Exception(Native.getLastErrorFfm());
                 }
                 size += 2048;
             } else {

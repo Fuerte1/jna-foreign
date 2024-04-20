@@ -1335,7 +1335,7 @@ public class WindowUtils {
                 char[] volumeUUID = new char[50];
                 HANDLE h = Kernel32.INSTANCE.FindFirstVolume(volumeUUID, 50);
                 if (h == null || h.equals(WinBase.INVALID_HANDLE_VALUE)) {
-                    throw new Win32Exception(Native.getLastError());
+                    throw new Win32Exception(Native.getLastErrorFfm());
                 }
                 try {
                     do {
@@ -1350,8 +1350,8 @@ public class WindowUtils {
                             }
                         }
                     } while (Kernel32.INSTANCE.FindNextVolume(h, volumeUUID, 50));
-                    if (Native.getLastError() != WinError.ERROR_NO_MORE_FILES) {
-                        throw new Win32Exception(Native.getLastError());
+                    if (Native.getLastErrorFfm() != WinError.ERROR_NO_MORE_FILES) {
+                        throw new Win32Exception(Native.getLastErrorFfm());
                     }
                 } finally {
                     Kernel32.INSTANCE.FindVolumeClose(h);

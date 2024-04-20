@@ -154,14 +154,14 @@ public abstract class Advapi32Util {
                     break;
 
                 default:
-                    throw new Win32Exception(Native.getLastError());
+                    throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             result = Advapi32.INSTANCE.GetUserNameW(buffer, len);
         }
 
         if (!result) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
 
         return Native.toString(buffer);
@@ -3112,7 +3112,7 @@ public abstract class Advapi32Util {
     public static void disableEncryption(File directory, boolean disable) {
         String dirPath = directory.getAbsolutePath();
         if (!Advapi32.INSTANCE.EncryptionDisable(dirPath, disable)) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
     }
 

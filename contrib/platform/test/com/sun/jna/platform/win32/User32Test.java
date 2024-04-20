@@ -343,14 +343,14 @@ public class User32Test extends AbstractWin32TestSupport {
     public void testPrintWindow() {
         boolean pwResult = User32.INSTANCE.PrintWindow(null, null, 0);
         assertFalse("PrintWindow result should be false", pwResult);
-        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.",  WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.",  WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test
     public void testIsWindowEnabled() {
         boolean iweResult = User32.INSTANCE.IsWindowEnabled(null);
         assertFalse("IsWindowEnabled result should be false", iweResult);
-        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.", WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.", WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test
@@ -363,7 +363,7 @@ public class User32Test extends AbstractWin32TestSupport {
     public void testFindWindowEx() {
         HWND result = User32.INSTANCE.FindWindowEx(null, null, null, null);
         assertNotNull("FindWindowEx result should not be null", result);
-        assertEquals("GetLastError should be ERROR_SUCCESS.", WinError.ERROR_SUCCESS, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_SUCCESS.", WinError.ERROR_SUCCESS, Native.getLastErrorFfm());
     }
 
     @Test
@@ -438,28 +438,28 @@ public class User32Test extends AbstractWin32TestSupport {
     public void testSetWinEventHook() {
         HANDLE result = User32.INSTANCE.SetWinEventHook(0, 0, null, null, 0, 0, 0);
         assertNull("SetWinEventHook result should be null", result);
-        assertEquals("GetLastError should be ERROR_INVALID_FILTER_PROC.", WinError.ERROR_INVALID_FILTER_PROC, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_FILTER_PROC.", WinError.ERROR_INVALID_FILTER_PROC, Native.getLastErrorFfm());
     }
 
     @Test
     public void testUnhookWinEvent() {
         boolean iwResult = User32.INSTANCE.UnhookWinEvent(null);
         assertFalse("UnhookWinEvent result should be false", iwResult);
-        assertEquals("GetLastError should be ERROR_INVALID_HANDLE.", WinError.ERROR_INVALID_HANDLE, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_HANDLE.", WinError.ERROR_INVALID_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test
     public void testCopyIcon() {
         HICON result = User32.INSTANCE.CopyIcon(null);
         assertNull("CopyIcon result should be false", result);
-        assertEquals("GetLastError should be ERROR_INVALID_CURSOR_HANDLE.", WinError.ERROR_INVALID_CURSOR_HANDLE, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_CURSOR_HANDLE.", WinError.ERROR_INVALID_CURSOR_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test
     public void testGetClassLong() {
         int result = User32.INSTANCE.GetClassLong(null, 0);
         assertEquals("GetClassLong result should be 0", 0, result);
-        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.", WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastError());
+        assertEquals("GetLastError should be ERROR_INVALID_WINDOW_HANDLE.", WinError.ERROR_INVALID_WINDOW_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test

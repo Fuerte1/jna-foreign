@@ -151,12 +151,12 @@ public class NativeLibrary implements Closeable {
                 Function f = new Function(this, "GetLastError", Function.ALT_CONVENTION, encoding) {
                         @Override
                         Object invoke(Arena arena, Object[] args, Class<?> returnType, boolean b, int fixedArgs) {
-                            return Native.getLastError();
+                            return Native.getLastErrorFfm();
                         }
 
                         @Override
                         Object invoke(Method invokingMethod, Class<?>[] paramTypes, Class<?> returnType, Object[] inArgs, Map<String, ?> options) {
-                            return Native.getLastError();
+                            return Native.getLastErrorFfm();
                         }
                     };
                 functions.put(functionKey("GetLastError", callFlags, encoding), f);
@@ -227,7 +227,6 @@ public class NativeLibrary implements Closeable {
                                              boolean jni) {
         LOG.log(DEBUG_LOAD_LEVEL, "Looking for library '" + libraryName + "'");
 
-//        SymbolLookup stdlib = Linker.nativeLinker().defaultLookup();
         if (!jni) {
             Map.Entry<SymbolLookup, String> lookup = getSymbolLookup(libraryName);
             return new NativeLibrary(libraryName, lookup.getValue(), -1, options, lookup.getKey());
@@ -268,7 +267,7 @@ public class NativeLibrary implements Closeable {
         //
         try {
             LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
-            handle = Native.open(libraryPath, openFlags);
+            handle = Native.foreignOpen(libraryPath, openFlags);
         } catch(UnsatisfiedLinkError e) {
             // Add the system paths back for all fallback searching
             LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e.getMessage());
@@ -281,7 +280,7 @@ public class NativeLibrary implements Closeable {
             if (handle == 0) {
                 libraryPath = findLibraryPath(libraryName, searchPath);
                 LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
-                handle = Native.open(libraryPath, openFlags);
+                handle = Native.foreignOpen(libraryPath, openFlags);
                 if (handle == 0) {
                     throw new UnsatisfiedLinkError("Failed to load library '" + libraryName + "'");
                 }
@@ -296,7 +295,7 @@ public class NativeLibrary implements Closeable {
                 try {
                     LOG.log(DEBUG_LOAD_LEVEL, "Preload (via System.loadLibrary) " + libraryName);
                     System.loadLibrary(libraryName);
-                    handle = Native.open(libraryPath, openFlags);
+                    handle = Native.foreignOpen(libraryPath, openFlags);
                 }
                 catch(UnsatisfiedLinkError e2) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
@@ -312,7 +311,7 @@ public class NativeLibrary implements Closeable {
                 if (libraryPath != null) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
                     try {
-                        handle = Native.open(libraryPath, openFlags);
+                        handle = Native.foreignOpen(libraryPath, openFlags);
                     }
                     catch(UnsatisfiedLinkError e2) {
                         LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
@@ -325,7 +324,7 @@ public class NativeLibrary implements Closeable {
                 for(String frameworkName : matchFramework(libraryName)) {
                     try {
                         LOG.log(DEBUG_LOAD_LEVEL, "Trying " + frameworkName);
-                        handle = Native.open(frameworkName, openFlags);
+                        handle = Native.foreignOpen(frameworkName, openFlags);
                         break;
                     }
                     catch(UnsatisfiedLinkError e2) {
@@ -341,7 +340,7 @@ public class NativeLibrary implements Closeable {
                 if (libraryPath != null) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
                     try {
-                        handle = Native.open(libraryPath, openFlags);
+                        handle = Native.foreignOpen(libraryPath, openFlags);
                     } catch(UnsatisfiedLinkError e2) {
                         LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
                         exceptions.add(e2);
@@ -355,7 +354,7 @@ public class NativeLibrary implements Closeable {
                     File embedded = Native.extractFromResourcePath(libraryName, (ClassLoader)options.get(Library.OPTION_CLASSLOADER));
                     if (embedded != null) {
                         try {
-                            handle = Native.open(embedded.getAbsolutePath(), openFlags);
+                            handle = Native.foreignOpen(embedded.getAbsolutePath(), openFlags);
                             libraryPath = embedded.getAbsolutePath();
                         } finally {
                             // Don't leave temporary files around
@@ -538,12 +537,15 @@ public class NativeLibrary implements Closeable {
 
             if (library == null) {
                 if (libraryName == null) {
-                    library = loadLibrary(LIBRARY_NAME_PROCESS, options, jni);
-//                    library = new NativeLibrary("<process>",
-//                            null,
-//                            Native.open(null, openFlags(options)),
-//                            options,
-//                            null);
+                    if (Native.jni) {
+                        library = new NativeLibrary("<process>",
+                                null,
+                                Native.foreignOpen(null, openFlags(options)),
+                                options,
+                                null);
+                    } else {
+                        library = loadLibrary(LIBRARY_NAME_PROCESS, options, jni);
+                    }
                 }
                 else {
                     library = loadLibrary(libraryName, options, jni);
@@ -702,7 +704,10 @@ public class NativeLibrary implements Closeable {
      */
     public Pointer getGlobalVariableAddress(String symbolName) {
         try {
-            return new Pointer(null, getSymbolAddress(symbolName));
+            if (Native.jni) {
+                return new Pointer(getSymbolAddress(symbolName));
+            }
+            return new Pointer(null, getForeignSymbolAddress(symbolName));
         } catch(UnsatisfiedLinkError e) {
             throw new UnsatisfiedLinkError("Error looking up '" + symbolName + "': " + e.getMessage());
         }
@@ -712,18 +717,19 @@ public class NativeLibrary implements Closeable {
      * Used by the Function class to locate a symbol
      * @throws UnsatisfiedLinkError if the symbol can't be found
      */
-    MemorySegment getSymbolAddress(String name) {
-        if (!jni) {
-            Optional<MemorySegment> symbolAddress = symbolLookup.find(name);
-            if (symbolAddress.isPresent()) {
-                return symbolAddress.get();
-            }
-            throw new UnsatisfiedLinkError(this.libraryName + "." + name);
-        }
+    long getSymbolAddress(String name) {
         if (handle == 0) {
             throw new UnsatisfiedLinkError("Library has been unloaded");
         }
-        return null; // this.symbolProvider.getSymbolAddress(handle, name, NATIVE_SYMBOL_PROVIDER);
+        return this.symbolProvider.getSymbolAddress(handle, name, NATIVE_SYMBOL_PROVIDER);
+    }
+
+    MemorySegment getForeignSymbolAddress(String name) {
+        Optional<MemorySegment> symbolAddress = symbolLookup.find(name);
+        if (symbolAddress.isPresent()) {
+            return symbolAddress.get();
+        }
+        throw new UnsatisfiedLinkError(this.libraryName + "." + name);
     }
 
     @Override

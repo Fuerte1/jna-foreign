@@ -71,14 +71,14 @@ public abstract class Secur32Util {
                     buffer = new char[len.getValue() + 1];
                     break;
                 default:
-                    throw new Win32Exception(Native.getLastError());
+                    throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             result = Secur32.INSTANCE.GetUserNameEx(format, buffer, len);
         }
 
         if (! result) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
 
         return Native.toString(buffer);

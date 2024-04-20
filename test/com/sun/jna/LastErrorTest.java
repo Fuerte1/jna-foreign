@@ -76,7 +76,7 @@ public class LastErrorTest extends TestCase {
                 @Override
                 public void run() {
                     lib.setLastError(-idx-1);
-                    errors[idx] = Native.getLastError();
+                    errors[idx] = Native.getLastErrorFfm();
                 }
             };
             t.setDaemon(true);  // so we can stop the main thread if necessary
@@ -84,7 +84,7 @@ public class LastErrorTest extends TestCase {
         }
         int EXPECTED = 42;
         lib.setLastError(EXPECTED);
-        assertEquals("Wrong error on main thread (immediate)", EXPECTED, Native.getLastError());
+        assertEquals("Wrong error on main thread (immediate)", EXPECTED, Native.getLastErrorFfm());
         for (Thread t : threads) {
             t.start();
         }
@@ -93,7 +93,7 @@ public class LastErrorTest extends TestCase {
             assertFalse("Thread " + t.getName() + " still alive", t.isAlive());
         }
 
-        assertEquals("Wrong error on main thread", EXPECTED, Native.getLastError());
+        assertEquals("Wrong error on main thread", EXPECTED, Native.getLastErrorFfm());
         for (int i=0;i < threads.size();i++) {
             assertEquals("Wrong error on thread " + i, -i-1, errors[i]);
         }
@@ -104,7 +104,7 @@ public class LastErrorTest extends TestCase {
         TestLibrary lib = Native.load("testlib", TestLibrary.class, OPTIONS);
 
         lib.noThrowLastError(ERROR);
-        assertEquals("Last error not preserved", ERROR, Native.getLastError());
+        assertEquals("Last error not preserved", ERROR, Native.getLastErrorFfm());
         try {
             lib.throwLastError(ERROR);
             fail("Method should throw LastErrorException");
@@ -118,7 +118,7 @@ public class LastErrorTest extends TestCase {
         TestLibrary lib = new DirectTestLibrary();
 
         lib.noThrowLastError(ERROR);
-        assertEquals("Last error not preserved", ERROR, Native.getLastError());
+        assertEquals("Last error not preserved", ERROR, Native.getLastErrorFfm());
         try {
             lib.throwLastError(ERROR);
             fail("Method should throw LastErrorException");

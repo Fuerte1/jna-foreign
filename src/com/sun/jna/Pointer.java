@@ -26,18 +26,12 @@ import com.sun.jna.ptr.MemorySegmentReference;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.foreign.AddressLayout;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Array;
 import java.nio.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
-
-import static java.lang.foreign.ValueLayout.*;
 
 /**
  * An abstraction for a native pointer data type.  A Pointer instance
@@ -54,8 +48,6 @@ import static java.lang.foreign.ValueLayout.*;
  * @see    Function
  */
 public class Pointer extends MemorySegmentReference {
-
-    static private Logger log = Logger.getLogger(Pointer.class.getName());
 
     /** Convenience constant, same as <code>null</code>. */
     public static final Pointer NULL = null;
@@ -91,16 +83,17 @@ public class Pointer extends MemorySegmentReference {
     /** Create from native pointer.  Don't use this unless you know what
      * you're doing.
      */
-    @Deprecated
     public Pointer(long peer) {
-        this.segment = MemorySegment.ofAddress(peer);
         this.peer = peer;
+        if (!Native.jni) {
+            this.segment = MemorySegment.ofAddress(peer);
+        }
     }
 
-    public Pointer(Arena arena, MemorySegment segment, long offset) {
+    public Pointer(Arena arena, MemorySegment segment, long peer) {
         this.arena = arena;
         this.segment = segment;
-        this.peer = segment.address() + offset;
+        this.peer = peer;
     }
 
     /** Provide a view of this memory using the given offset to calculate a new base address. */
@@ -115,8 +108,7 @@ public class Pointer extends MemorySegmentReference {
         if (offset == 0L) {
             return this;
         }
-//        return new Pointer(arena, segment.reinterpret(offset + sz).asSlice(offset, sz));
-        return new Pointer(arena, segment, offset);
+        return new Pointer(arena, segment, peer + offset);
     }
 
     /** Zero memory for the given number of bytes. */
@@ -149,18 +141,10 @@ public class Pointer extends MemorySegmentReference {
      * or -1 if the value is not found.
      */
     public long indexOf(long offset, byte value) {
-//        return Native.indexOf(this, this.peer, offset, value);
-        ByteBuffer byteBuffer = segment.asByteBuffer();
-        offset += getOffset();
-        for (int i = (int) offset; i < byteBuffer.limit(); i++) {
-            if (byteBuffer.get(i) == value) {
-                return i;
-            }
-        }
-        return -1;
+        return Native.indexOfFfm(this, this.peer, offset, value);
     }
 
-    private long getOffset() {
+    long getOffset() {
         return peer - segment.address(); // normally +0
     }
 
@@ -178,10 +162,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, byte[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        int offs = getOffset(offset);
-        reinterpret(offs, length);
-        segment.asByteBuffer().slice(offs, length).get(index, buf);
+        Native.readFFM(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -194,9 +175,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, short[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_SHORT.byteSize()))
-                .asShortBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -209,9 +188,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, char[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_CHAR.byteSize()))
-                .asCharBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -224,9 +201,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, int[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_INT.byteSize()))
-                .asIntBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -239,9 +214,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, long[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_LONG.byteSize()))
-                .asLongBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -254,9 +227,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, float[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_FLOAT.byteSize()))
-                .asFloatBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -269,9 +240,7 @@ public class Pointer extends MemorySegmentReference {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, double[] buf, int index, int length) {
-//        Native.read(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer().slice((int) (offset + getOffset()), (int) (length * JAVA_DOUBLE.byteSize()))
-                .asDoubleBuffer().get(index, buf);
+        Native.readFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -285,7 +254,7 @@ public class Pointer extends MemorySegmentReference {
      */
     public void read(long offset, Pointer[] buf, int index, int length) {
         for (int i=0;i < length;i++) {
-            Pointer p = getPointer(offset + i*Native.POINTER_SIZE);
+            Pointer p = getPointer(offset + (long) i *Native.POINTER_SIZE);
             Pointer oldp = buf[i+index];
             // Avoid replacing the original pointer if it hasn't changed
             if (oldp == null || p == null || p.peer != oldp.peer) {
@@ -310,11 +279,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, byte[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        reinterpret(offset, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -328,10 +293,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, short[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asShortBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -345,10 +307,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, char[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asCharBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -362,10 +321,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, int[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asIntBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -379,10 +335,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, long[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asLongBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -396,10 +349,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, float[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asFloatBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -413,10 +363,7 @@ public class Pointer extends MemorySegmentReference {
      *               copied
      */
     public void write(long offset, double[] buf, int index, int length) {
-//        Native.write(this, this.peer, offset, buf, index, length);
-        segment.asByteBuffer()
-                .position(getOffset(offset))
-                .asDoubleBuffer().put(0, buf, index, length);
+        Native.writeFfm(this, this.peer, offset, buf, index, length);
     }
 
     /** Write the given array of Pointer to native memory.
@@ -428,7 +375,7 @@ public class Pointer extends MemorySegmentReference {
     */
     public void write(long bOff, Pointer[] buf, int index, int length) {
         for (int i=0;i < length;i++) {
-            setPointer(bOff + i * Native.POINTER_SIZE, buf[index + i]);
+            setPointer(bOff + (long) i * Native.POINTER_SIZE, buf[index + i]);
         }
     }
 
@@ -451,19 +398,19 @@ public class Pointer extends MemorySegmentReference {
         } else if (type == boolean.class || type == Boolean.class) {
             result = Function.valueOf(getInt(offset) != 0);
         } else if (type == byte.class || type == Byte.class) {
-            result =  Byte.valueOf(getByte(offset));
+            result = getByte(offset);
         } else if (type == short.class || type == Short.class) {
-            result = Short.valueOf(getShort(offset));
+            result = getShort(offset);
         } else if (type == char.class || type == Character.class) {
-            result = Character.valueOf(getChar(offset));
+            result = getChar(offset);
         } else if (type == int.class || type == Integer.class) {
-            result = Integer.valueOf(getInt(offset));
+            result = getInt(offset);
         } else if (type == long.class || type == Long.class) {
-            result = Long.valueOf(getLong(offset));
+            result = getLong(offset);
         } else if (type == float.class || type == Float.class) {
-            result = Float.valueOf(getFloat(offset));
+            result = getFloat(offset);
         } else if (type == double.class || type == Double.class) {
-            result = Double.valueOf(getDouble(offset));
+            result = getDouble(offset);
         } else if (Pointer.class.isAssignableFrom(type)) {
             Pointer p = getPointer(offset);
             if (p != null) {
@@ -534,8 +481,7 @@ public class Pointer extends MemorySegmentReference {
 
     /** Read memory starting at offset into the array with element type cls. */
     private void readArray(long offset, Object o, Class<?> cls) {
-        int length = 0;
-        length = Array.getLength(o);
+        int length = Array.getLength(o);
         Object result = o;
 
         if (cls == byte.class) {
@@ -619,10 +565,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>byte</code> value being pointed to
      */
     public byte getByte(long offset) {
-//        return Native.getByte(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, 1);
-        return segment.get(JAVA_BYTE, offs);
+        return Native.getByteFfm(this, this.peer, offset);
     }
 
     /**
@@ -634,10 +577,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>wchar_t</code> value being pointed to
      */
     public char getChar(long offset) {
-//        return Native.getChar(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_CHAR.byteSize());
-        return segment.get(JAVA_CHAR, offs);
+        return Native.getCharFfm(this, this.peer, offset);
     }
 
     /**
@@ -649,10 +589,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>short</code> value being pointed to
      */
     public short getShort(long offset) {
-//        return Native.getShort(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_SHORT.byteSize());
-        return segment.get(JAVA_SHORT, offs);
+        return Native.getShortFFM(this, this.peer, offset);
     }
 
     /**
@@ -664,10 +601,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>int</code> value being pointed to
      */
     public int getInt(long offset) {
-//        return Native.getInt(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_INT.byteSize());
-        return segment.get(JAVA_INT, offs);
+        return Native.getIntFFM(this, this.peer, offset);
     }
 
     /**
@@ -679,10 +613,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>long</code> value being pointed to
      */
     public long getLong(long offset) {
-//        return Native.getLong(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_LONG.byteSize());
-        return segment.get(JAVA_LONG, offs);
+        return Native.getLongFFM(this, this.peer, offset);
     }
 
     /**
@@ -706,10 +637,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>float</code> value being pointed to
      */
     public float getFloat(long offset) {
-//        return Native.getFloat(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_FLOAT.byteSize());
-        return segment.get(JAVA_FLOAT, offs);
+        return Native.getFloatFfm(this, this.peer, offset);
     }
 
     /**
@@ -721,10 +649,7 @@ public class Pointer extends MemorySegmentReference {
      * @return the <code>double</code> value being pointed to
      */
     public double getDouble(long offset) {
-//        return Native.getDouble(this, this.peer, offset);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_DOUBLE.byteSize());
-        return segment.get(JAVA_DOUBLE, offs);
+        return Native.getDoubleFFM(this, this.peer, offset);
     }
 
     /**
@@ -738,25 +663,7 @@ public class Pointer extends MemorySegmentReference {
      * <code>NULL</code>;
      */
     public Pointer getPointer(long offset) {
-//        return Native.getPointer(peer + offset);
-        long newOffset = offset + getOffset();
-//        long align = newOffset % 8;
-//        if (align % 8 != 0) {
-//            log.warning("Unaligned offset " + offset + " / " + newOffset + " +" + align);
-//        } else {
-//            long address = segment.address();
-//            align = address % ADDRESS.byteSize();
-//            if (align != 0) {
-//                log.warning("Unaligned address " + address + " +" + align);
-//            }
-//        }
-        reinterpret(newOffset, ADDRESS.byteSize());
-        MemorySegment segment1 = segment.get(ADDRESS_UNALIGNED, newOffset);
-        long address = segment1.address();
-        if (address == 0) {
-            return null;
-        }
-        return new Pointer(arena, segment1);
+        return Native.getPointer(this, offset);
     }
 
     public void reinterpret(long offset, long size) {
@@ -793,9 +700,7 @@ public class Pointer extends MemorySegmentReference {
 
     /** Read a wide (<code>const wchar_t *</code>) string from memory. */
     public String getWideString(long offset) {
-//        return Native.getWideString(this, this.peer, offset);
-        reinterpret(-1);
-        return segment.getString(offset, StandardCharsets.UTF_16LE);
+        return Native.foreignGetWideString(this, this.peer, offset);
     }
 
     /**
@@ -945,9 +850,6 @@ public class Pointer extends MemorySegmentReference {
     /** Returns an array of <code>String</code> based on a native array
      * of <code>char*</code> or <code>wchar_t*</code> based on the
      * <code>wide</code> parameter, using the given array length.
-     * @param offset
-     * @param length
-     * @param encoding
      */
     public String[] getStringArray(long offset, int length, String encoding) {
         List<String> strings = new ArrayList<>();
@@ -989,19 +891,19 @@ public class Pointer extends MemorySegmentReference {
         if (type == boolean.class || type == Boolean.class) {
             setInt(offset, Boolean.TRUE.equals(value) ? -1 : 0);
         } else if (type == byte.class || type == Byte.class) {
-            setByte(offset, value == null ? 0 : ((Byte)value).byteValue());
+            setByte(offset, value == null ? 0 : (Byte) value);
         } else if (type == short.class || type == Short.class) {
-            setShort(offset, value == null ? 0 : ((Short)value).shortValue());
+            setShort(offset, value == null ? 0 : (Short) value);
         } else if (type == char.class || type == Character.class) {
-            setChar(offset, value == null ? 0 : ((Character)value).charValue());
+            setChar(offset, value == null ? 0 : (Character) value);
         } else if (type == int.class || type == Integer.class) {
-            setInt(offset, value == null ? 0 : ((Integer)value).intValue());
+            setInt(offset, value == null ? 0 : (Integer) value);
         } else if (type == long.class || type == Long.class) {
-            setLong(offset, value == null ? 0 : ((Long)value).longValue());
+            setLong(offset, value == null ? 0 : (Long) value);
         } else if (type == float.class || type == Float.class) {
-            setFloat(offset, value == null ? 0f : ((Float)value).floatValue());
+            setFloat(offset, value == null ? 0f : (Float) value);
         } else if (type == double.class || type == Double.class) {
-            setDouble(offset, value == null ? 0.0 : ((Double)value).doubleValue());
+            setDouble(offset, value == null ? 0.0 : (Double) value);
         } else if (type == Pointer.class) {
             setPointer(offset, (Pointer)value);
         } else if (type == String.class) {
@@ -1116,12 +1018,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value value to be written
      */
     public void setMemory(long offset, long length, byte value) {
-        //Native.setMemory(this, this.peer, offset, length, value);
-        ByteBuffer byteBuffer = segment.asByteBuffer();
-        int start = (int) (offset + getOffset());
-        for (int i = start; length > 0; i++, length--) {
-            byteBuffer.put(i, value);
-        }
+        Native.setMemoryFfm(this, this.peer, offset, length, value);
     }
 
     /**
@@ -1134,9 +1031,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>byte</code> value to set
      */
     public void setByte(long offset, byte value) {
-//        Native.setByte(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.set(JAVA_BYTE, offset, value);
+        Native.setByteFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1149,9 +1044,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>short</code> value to set
      */
     public void setShort(long offset, short value) {
-//        Native.setShort(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.set(JAVA_SHORT, offset, value);
+        Native.setShortFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1164,9 +1057,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>char</code> value to set
      */
     public void setChar(long offset, char value) {
-//        Native.setChar(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.set(JAVA_CHAR, offset, value);
+        Native.setCharFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1179,10 +1070,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>int</code> value to set
      */
     public void setInt(long offset, int value) {
-//        Native.setInt(this, this.peer, offset, value);
-        int offs = getOffset(offset);
-        reinterpret(offs, JAVA_INT.byteSize());
-        segment.set(JAVA_INT, offs, value);
+        Native.setIntFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1195,10 +1083,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>long</code> value to set
      */
     public void setLong(long offset, long value) {
-//        Native.setLong(this, this.peer, offset, value);
-        offset += getOffset();
-        reinterpret(offset, JAVA_LONG.byteSize());
-        segment.set(JAVA_LONG, offset, value);
+        Native.setLongFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1228,9 +1113,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>float</code> value to set
      */
     public void setFloat(long offset, float value) {
-//        Native.setFloat(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.set(JAVA_FLOAT, offset, value);
+        Native.setFloatFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1243,9 +1126,7 @@ public class Pointer extends MemorySegmentReference {
      * @param value <code>double</code> value to set
      */
     public void setDouble(long offset, double value) {
-//        Native.setDouble(this, this.peer, offset, value);
-        offset += getOffset();
-        segment.set(JAVA_DOUBLE, offset, value);
+        Native.setDoubleFfm(this, this.peer, offset, value);
     }
 
     /**
@@ -1260,16 +1141,7 @@ public class Pointer extends MemorySegmentReference {
      * pointer.
      */
     public void setPointer(long offset, Pointer value) {
-//        Native.setPointer(this, this.peer, offset, value != null ? value.peer : 0);
-        offset += getOffset();
-        reinterpret(offset, ADDRESS.byteSize());
-        MemorySegment seg;
-        if (value != null) {
-            seg = value.segment;
-        } else {
-            seg = MemorySegment.NULL;
-        }
-        segment.set(ADDRESS_UNALIGNED, offset, seg);
+        Native.setPointerFfm(this, this.peer, offset, value);
     }
 
     /**

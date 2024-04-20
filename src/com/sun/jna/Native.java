@@ -48,8 +48,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -121,6 +119,20 @@ import static java.lang.foreign.ValueLayout.*;
 public final class Native implements Version {
 
     private static final Logger LOG = Logger.getLogger(Native.class.getName());
+
+    private static boolean getBoolean(String key, boolean def) {
+        String property = System.getProperty(key);
+        if (property != null) {
+            return Boolean.parseBoolean(property);
+        }
+        return def;
+    }
+
+    // "jna.jni" system property
+    // false: Foreign Function & Memory API (FFM) is used (java.lang.foreign), no JNI
+    // true: jnidispatch is used
+    public static final boolean jni = getBoolean("jna.jni", true); // should be false
+    private static final boolean IGNORE_JNI_VERSION = getBoolean("jna.ignore.version", true);
 
     public static final Charset DEFAULT_CHARSET;
     public static final String DEFAULT_ENCODING;
@@ -229,8 +241,6 @@ public final class Native implements Version {
         return true;
     }
 
-    public static boolean jni = false;
-
     static Arena arena = Arena.global();
 
     static ConcurrentHashMap<Long, MemorySegment> arenaMap = new ConcurrentHashMap<>();
@@ -238,30 +248,31 @@ public final class Native implements Version {
     static {
         if (jni) {
             loadNativeDispatchLibrary();
-
-            if (!isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
-                String LS = System.lineSeparator();
-                throw new Error(LS + LS
-                        + "There is an incompatible JNA native library installed on this system" + LS
-                        + "Expected: " + VERSION_NATIVE + LS
-                        + "Found:    " + getNativeVersion() + LS
-                        + (jnidispatchPath != null
-                        ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
-                        + "." + LS
-                        + "To resolve this issue you may do one of the following:" + LS
-                        + " - remove or uninstall the offending library" + LS
-                        + " - set the system property jna.nosys=true" + LS
-                        + " - set jna.boot.library.path to include the path to the version of the " + LS
-                        + "   jnidispatch library included with the JNA jar file you are using" + LS);
+            if (!IGNORE_JNI_VERSION) {
+                if (!isCompatibleVersion(VERSION_NATIVE, getNativeVersion())) {
+                    String LS = System.lineSeparator();
+                    throw new Error(LS + LS
+                            + "There is an incompatible JNA native library installed on this system" + LS
+                            + "Expected: " + VERSION_NATIVE + LS
+                            + "Found:    " + getNativeVersion() + LS
+                            + (jnidispatchPath != null
+                            ? "(at " + jnidispatchPath + ")" : System.getProperty("java.library.path"))
+                            + "." + LS
+                            + "To resolve this issue you may do one of the following:" + LS
+                            + " - remove or uninstall the offending library" + LS
+                            + " - set the system property jna.nosys=true" + LS
+                            + " - set jna.boot.library.path to include the path to the version of the " + LS
+                            + "   jnidispatch library included with the JNA jar file you are using" + LS);
+                }
             }
         }
 
-        POINTER_SIZE = sizeof(TYPE_VOIDP);
-        LONG_SIZE = sizeof(TYPE_LONG);
-        WCHAR_SIZE = sizeof(TYPE_WCHAR_T);
-        SIZE_T_SIZE = sizeof(TYPE_SIZE_T);
-        BOOL_SIZE = sizeof(TYPE_BOOL);
-        LONG_DOUBLE_SIZE = sizeof(TYPE_LONG_DOUBLE);
+        POINTER_SIZE = foreignSizeof(TYPE_VOIDP);
+        LONG_SIZE = foreignSizeof(TYPE_LONG);
+        WCHAR_SIZE = foreignSizeof(TYPE_WCHAR_T);
+        SIZE_T_SIZE = foreignSizeof(TYPE_SIZE_T);
+        BOOL_SIZE = foreignSizeof(TYPE_BOOL);
+        LONG_DOUBLE_SIZE = foreignSizeof(TYPE_LONG_DOUBLE);
 
         // Perform initialization of other JNA classes until *after*
         // initializing the above final fields
@@ -276,6 +287,10 @@ public final class Native implements Version {
             ? 8 : LONG_SIZE;
         MAX_PADDING = (Platform.isMac() && Platform.isPPC()) ? 8 : MAX_ALIGNMENT;
         System.setProperty("jna.loaded", "true");
+        int err = getLastErrorFfm();
+        if (err != 0) {
+            LOG.severe("GetLastError = " + err);
+        }
     }
 
     /** Force a dispose when the Native class is GC'd. */
@@ -630,7 +645,7 @@ public final class Native implements Version {
      * @see #load(String, Class, Map)
      */
     public static <T extends Library> T load(String name, Class<T> interfaceClass) {
-        return load(name, interfaceClass, false);
+        return load(name, interfaceClass, Native.jni);
     }
 
     public static <T extends Library> T load(String name, Class<T> interfaceClass, boolean jni) {
@@ -1246,8 +1261,12 @@ public final class Native implements Version {
      * Initialize field and method IDs for native methods of this class.
      * Returns the size of a native pointer.
      **/
-//    private static native int sizeof(int type);
-    private static int sizeof(int type) {
+    private static native int sizeof(int type);
+
+    private static int foreignSizeof(int type) {
+        if (jni) {
+            return sizeof(type);
+        }
         return
                 switch (type) {
                     case TYPE_VOIDP, TYPE_SIZE_T, TYPE_LONG_DOUBLE -> (int)ADDRESS.byteSize();
@@ -1274,8 +1293,12 @@ public final class Native implements Version {
      * error value is non-zero after the call, regardless of the actual
      * returned value from the native function.</p>
      */
-//    public static native int getLastError();
-    public static int getLastError() {
+    private static native int getLastError();
+
+    public static int getLastErrorFfm() {
+        if (jni) {
+            return getLastError();
+        }
         try {
             return (int) ffGetLastError.get().invoke();
         } catch (Throwable e) {
@@ -1996,7 +2019,7 @@ public final class Native implements Version {
 
             Function f = lib.getFunction(method.getName(), method);
             try {
-                handles[i] = registerMethod(cls, method.getName(),
+                handles[i] = registerMethodFFM(cls, method.getName(),
                                             sig, cvt,
                                             closure_atypes, atypes, rcvt,
                                             closure_rtype, rtype,
@@ -2042,23 +2065,24 @@ public final class Native implements Version {
         return libOptions;
     }
 
-//    private static native long registerMethod(Class<?> cls,
-//                                              String name,
-//                                              String signature,
-//                                              int[] conversions,
-//                                              long[] closure_arg_types,
-//                                              long[] arg_types,
-//                                              int rconversion,
-//                                              long closure_rtype,
-//                                              long rtype,
-//                                              Method method,
-//                                              long fptr,
-//                                              int callingConvention,
-//                                              boolean throwLastError,
-//                                              ToNativeConverter[] toNative,
-//                                              FromNativeConverter fromNative,
-//                                              String encoding);
-    private static long registerMethod(Class<?> cls,
+    private static native long registerMethod(Class<?> cls,
+                                              String name,
+                                              String signature,
+                                              int[] conversions,
+                                              long[] closure_arg_types,
+                                              long[] arg_types,
+                                              int rconversion,
+                                              long closure_rtype,
+                                              long rtype,
+                                              Method method,
+                                              long fptr,
+                                              int callingConvention,
+                                              boolean throwLastError,
+                                              ToNativeConverter[] toNative,
+                                              FromNativeConverter fromNative,
+                                              String encoding);
+
+    private static long registerMethodFFM(Class<?> cls,
                                               String name,
                                               String signature,
                                               int[] conversions,
@@ -2074,6 +2098,11 @@ public final class Native implements Version {
                                               ToNativeConverter[] toNative,
                                               FromNativeConverter fromNative,
                                               String encoding) {
+        if (jni) {
+            return registerMethod(cls, name, signature, conversions, closure_arg_types, arg_types,
+                    rconversion, closure_rtype, rtype, method, fptr, callingConvention, throwLastError,
+                    toNative, fromNative, encoding);
+        }
         LOG.log(Level.INFO,
                 "registerMethod {0}", Arrays.toString(new Object[]{
                         cls, name, signature,
@@ -2286,14 +2315,18 @@ public final class Native implements Version {
 
     /** Open the requested native library with default options. */
     static long open(String name) {
-        return open(name, -1);
+        return foreignOpen(name, -1);
     }
 
     /** Open the requested native library with the specified platform-specific
      * options.
      */
-//    static native long open(String name, int flags);
-    static long open(String name, int flags) {
+    private static native long open(String name, int flags);
+
+    static long foreignOpen(String name, int flags) {
+        if (jni) {
+            return open(name, flags);
+        }
         if (name == null) { // current process
             throw new UnsupportedOperationException("Process can't be opened");
         }
@@ -2348,104 +2381,423 @@ public final class Native implements Version {
 
     ============================================================================
      */
-    static native long indexOf(Pointer pointer, long baseaddr, long offset, byte value);
+    private static native long indexOf(Pointer pointer, long baseaddr, long offset, byte value);
 
-    static native void read(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length);
+    private static ByteBuffer getByteBuffer(Pointer pointer, ValueLayout valueLayout, long offset, int length) {
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, length * valueLayout.byteSize());
+        return pointer.segment.asByteBuffer()
+                .position((int) offset);
+    }
 
-    static native void read(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length);
+    private static ByteBuffer getByteBuffer(Pointer pointer, ValueLayout valueLayout, long offset) {
+        return getByteBuffer(pointer, valueLayout, offset, (int) valueLayout.byteSize());
+    }
 
-    static native void read(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length);
+    static long indexOfFfm(Pointer pointer, long baseaddr, long offset, byte value) {
+        if (jni) {
+            return indexOf(pointer, baseaddr, offset, value);
+        }
+        ByteBuffer byteBuffer = pointer.segment.asByteBuffer();
+        offset += pointer.getOffset();
+        for (int i = (int) offset; i < byteBuffer.limit(); i++) {
+            if (byteBuffer.get(i) == value) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
-    static native void read(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length);
 
-    static native void read(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length);
+    static void readFFM(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_BYTE, offset, length)
+                .get(buf, index, length);
+    }
 
-    static native void read(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length);
 
-    static native void read(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_SHORT, offset, length)
+                .asShortBuffer().get(buf, index, length);
+    }
 
-    static native void write(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length);
 
-    static native void write(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_CHAR, offset, length)
+                .asCharBuffer().get(buf, index, length);
+    }
 
-    static native void write(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length);
 
-    static native void write(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_INT, offset, length)
+                .asIntBuffer().get(buf, index, length);
+    }
 
-    static native void write(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length);
 
-    static native void write(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_LONG, offset, length)
+                .asLongBuffer().get(buf, index, length);
+    }
 
-    static native void write(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length);
+    private static native void read(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length);
 
-    static native byte getByte(Pointer pointer, long baseaddr, long offset);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_FLOAT, offset, length)
+                .asFloatBuffer().get(buf, index, length);
+    }
 
-    static native char getChar(Pointer pointer, long baseaddr, long offset);
+    private static native void read(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length);
 
-    static native short getShort(Pointer pointer, long baseaddr, long offset);
+    static void readFfm(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length) {
+        if (jni) {
+            read(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_DOUBLE, offset, length)
+                .asDoubleBuffer().get(buf, index, length);
+    }
 
-    static native int getInt(Pointer pointer, long baseaddr, long offset);
+    private static native void write(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length);
 
-    static native long getLong(Pointer pointer, long baseaddr, long offset);
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, byte[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_BYTE, offset, length)
+                .put(buf, index, length);
+    }
 
-    static native float getFloat(Pointer pointer, long baseaddr, long offset);
+    private static native void write(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length);
 
-    static native double getDouble(Pointer pointer, long baseaddr, long offset);
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, short[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_SHORT, offset, length)
+                .asShortBuffer().put(buf, index, length);
+    }
 
-    static Pointer getPointer(long addr) {
-        long peer = _getPointer(addr);
-        return peer == 0 ? null : new Pointer(peer);
+    private static native void write(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length);
+
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, char[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_CHAR, offset, length)
+                .asCharBuffer().put(buf, index, length);
+    }
+
+    private static native void write(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length);
+
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, int[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_INT, offset, length)
+                .asIntBuffer().put(buf, index, length);
+    }
+
+    private static native void write(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length);
+
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, long[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_LONG, offset, length)
+                .asLongBuffer().put(buf, index, length);
+    }
+
+    private static native void write(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length);
+
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, float[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_FLOAT, offset, length)
+                .asFloatBuffer().put(buf, index, length);
+    }
+
+    private static native void write(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length);
+
+    static void writeFfm(Pointer pointer, long baseaddr, long offset, double[] buf, int index, int length) {
+        if (jni) {
+            write(pointer, baseaddr, offset, buf, index, length);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_DOUBLE, offset, length)
+                .asDoubleBuffer().put(0, buf, index, length);
+    }
+
+    private static native byte getByte(Pointer pointer, long baseaddr, long offset);
+
+    static byte getByteFfm(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getByte(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_BYTE.byteSize());
+        return pointer.segment.get(JAVA_BYTE, offs);
+    }
+
+    private static native char getChar(Pointer pointer, long baseaddr, long offset);
+
+    static char getCharFfm(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getChar(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_CHAR.byteSize());
+        return pointer.segment.get(JAVA_CHAR, offs);
+    }
+
+    private static native short getShort(Pointer pointer, long baseaddr, long offset);
+
+    static short getShortFFM(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getShort(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_SHORT.byteSize());
+        return pointer.segment.get(JAVA_SHORT, offs);
+    }
+
+    private static native int getInt(Pointer pointer, long baseaddr, long offset);
+
+    static int getIntFFM(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getInt(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_INT.byteSize());
+        return pointer.segment.get(JAVA_INT, offs);
+    }
+
+    private static native long getLong(Pointer pointer, long baseaddr, long offset);
+
+    static long getLongFFM(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getLong(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_LONG.byteSize());
+        return pointer.segment.get(JAVA_LONG, offs);
+    }
+
+    private static native float getFloat(Pointer pointer, long baseaddr, long offset);
+
+    static float getFloatFfm(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getFloat(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_FLOAT.byteSize());
+        return pointer.segment.get(JAVA_FLOAT, offs);
+    }
+
+    private static native double getDouble(Pointer pointer, long baseaddr, long offset);
+
+    static double getDoubleFFM(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getDouble(pointer, baseaddr, offset);
+        }
+        int offs = pointer.getOffset(offset);
+        pointer.reinterpret(offs, JAVA_DOUBLE.byteSize());
+        return pointer.segment.get(JAVA_DOUBLE, offs);
+    }
+
+    static Pointer getPointer(Pointer pointer, long offset) {
+        if (jni) {
+            long peer = _getPointer(pointer.peer + offset);
+            return peer == 0 ? null : new Pointer(peer);
+        }
+        long newOffset = offset + pointer.getOffset();
+        pointer.reinterpret(newOffset, ADDRESS.byteSize());
+        MemorySegment segment1 = pointer.segment.get(ADDRESS_UNALIGNED, newOffset);
+        long address = segment1.address();
+        if (address == 0) {
+            return null;
+        }
+        return new Pointer(arena, segment1);
     }
 
     private static native long _getPointer(long addr);
 
-    static native String getWideString(Pointer pointer, long baseaddr, long offset);
+    private static native String getWideString(Pointer pointer, long baseaddr, long offset);
+
+    public static String foreignGetWideString(Pointer pointer, long baseaddr, long offset) {
+        if (jni) {
+            return getWideString(pointer, baseaddr, offset);
+        }
+        pointer.reinterpret(-1);
+        return pointer.segment.getString(offset, StandardCharsets.UTF_16LE);
+    }
 
     static String getString(Pointer pointer, long offset) {
         return getString(pointer, offset, getDefaultStringEncoding());
     }
 
     static String getString(Pointer pointer, long offset, String encoding) {
-//        byte[] data = getStringBytes(pointer, pointer.peer, offset);
-//        if (encoding != null) {
-//            try {
-//                return new String(data, encoding);
-//            }
-//            catch(UnsupportedEncodingException e) {
-//            }
-//        }
-//        return new String(data);
+        if (Native.jni) {
+            byte[] data = getStringBytes(pointer, pointer.peer, offset);
+            if (encoding != null) {
+                try {
+                    return new String(data, encoding);
+                } catch (UnsupportedEncodingException e) {
+                }
+            }
+            return new String(data);
+        }
         Charset charset = Charset.defaultCharset();
         if (encoding != null) {
-//            if ("windows-1252".equals(encoding)) { // java.lang.IllegalArgumentException: Unsupported charset: windows-1252
-//                charset = Charset.forName("ISO-8859-1"); // Latin-1
-//                // https://www.i18nqa.com/debug/table-iso8859-1-vs-windows-1252.html
-//            } else {
-                charset = Charset.forName(encoding);
-//            }
+            charset = Charset.forName(encoding);
         }
         return Pointer.reinterpret(pointer.segment, -1).getString(pointer.getOffset(offset), charset);
     }
 
     static native byte[] getStringBytes(Pointer pointer, long baseaddr, long offset);
 
-    static native void setMemory(Pointer pointer, long baseaddr, long offset, long length, byte value);
+    private static native void setMemory(Pointer pointer, long baseaddr, long offset, long length, byte value);
 
-    static native void setByte(Pointer pointer, long baseaddr, long offset, byte value);
+    static void setMemoryFfm(Pointer pointer, long baseaddr, long offset, long length, byte value) {
+        if (jni) {
+            setMemory(pointer, baseaddr, offset, length, value);
+            return;
+        }
+        ByteBuffer byteBuffer = getByteBuffer(pointer, JAVA_BYTE, offset, (int) length);
+        for (int i = 0; i < length; i++) {
+            byteBuffer.put(value);
+        }
+    }
 
-    static native void setShort(Pointer pointer, long baseaddr, long offset, short value);
+    private static native void setByte(Pointer pointer, long baseaddr, long offset, byte value);
 
-    static native void setChar(Pointer pointer, long baseaddr, long offset, char value);
+    static void setByteFfm(Pointer pointer, long baseaddr, long offset, byte value) {
+        if (jni) {
+            setByte(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_BYTE, offset)
+            .put(value);
+    }
 
-    static native void setInt(Pointer pointer, long baseaddr, long offset, int value);
+    private static native void setShort(Pointer pointer, long baseaddr, long offset, short value);
+
+    static void setShortFfm(Pointer pointer, long baseaddr, long offset, short value) {
+        if (jni) {
+            setShort(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_SHORT, offset)
+            .asShortBuffer().put(value);
+    }
+
+    private static native void setChar(Pointer pointer, long baseaddr, long offset, char value);
+
+    static void setCharFfm(Pointer pointer, long baseaddr, long offset, char value) {
+        if (jni) {
+            setChar(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_CHAR, offset)
+            .asCharBuffer().put(value);
+    }
+
+    private static native void setInt(Pointer pointer, long baseaddr, long offset, int value);
+
+    static void setIntFfm(Pointer pointer, long baseaddr, long offset, int value) {
+        if (jni) {
+            setInt(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_INT, offset)
+            .asIntBuffer().put(value);
+    }
 
     static native void setLong(Pointer pointer, long baseaddr, long offset, long value);
 
+    static void setLongFfm(Pointer pointer, long baseaddr, long offset, long value) {
+        if (jni) {
+            setLong(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_INT, offset)
+                .asLongBuffer().put(value);
+    }
+
     static native void setFloat(Pointer pointer, long baseaddr, long offset, float value);
+
+    static void setFloatFfm(Pointer pointer, long baseaddr, long offset, float value) {
+        if (jni) {
+            setFloat(pointer, baseaddr, offset, value);
+            return;
+        }
+        getByteBuffer(pointer, JAVA_FLOAT, offset)
+                .asFloatBuffer().put(value);
+    }
 
     static native void setDouble(Pointer pointer, long baseaddr, long offset, double value);
 
-//    static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
+    static void setDoubleFfm(Pointer pointer, long baseaddr, long offset, double value) {
+        if (jni) {
+            setDouble(pointer, baseaddr, offset, value);
+            return;
+        }
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, JAVA_DOUBLE.byteSize());
+        pointer.segment.set(JAVA_DOUBLE, offset, value);
+    }
+
+    private static native void setPointer(Pointer pointer, long baseaddr, long offset, long value);
+
+    static void setPointerFfm(Pointer pointer, long baseaddr, long offset, Pointer value) {
+        if (jni) {
+            setPointer(pointer, baseaddr, offset, value != null ? value.peer : 0);
+            return;
+        }
+        offset += pointer.getOffset();
+        pointer.reinterpret(offset, ADDRESS.byteSize());
+        MemorySegment seg;
+        if (value != null) {
+            seg = value.segment;
+        } else {
+            seg = MemorySegment.NULL;
+        }
+        pointer.segment.set(ADDRESS_UNALIGNED, offset, seg);
+    }
 
 //    static native void setWideString(Pointer pointer, long baseaddr, long offset, String value);
 

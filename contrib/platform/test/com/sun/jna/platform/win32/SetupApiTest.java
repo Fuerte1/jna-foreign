@@ -22,7 +22,7 @@
  */
 package com.sun.jna.platform.win32;
 
-import static com.sun.jna.Native.getLastError;
+import static com.sun.jna.Native.getLastErrorFfm;
 import static com.sun.jna.platform.win32.SetupApi.DICS_FLAG_GLOBAL;
 import static com.sun.jna.platform.win32.SetupApi.DIGCF_ALLCLASSES;
 import static com.sun.jna.platform.win32.SetupApi.DIGCF_DEVICEINTERFACE;
@@ -97,7 +97,7 @@ public class SetupApiTest extends TestCase {
         HANDLE hDevInfoSet = SetupApi.INSTANCE.SetupDiGetClassDevs(GUID_DEVINTERFACE_COMPORT, null, null, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
         SP_DEVINFO_DATA devInfo = new SP_DEVINFO_DATA();
         boolean succeed = SetupApi.INSTANCE.SetupDiEnumDeviceInfo(hDevInfoSet, FIRST_MEMBER, devInfo);
-        boolean hasNoMoreItems = (getLastError() == ERROR_NO_MORE_ITEMS);
+        boolean hasNoMoreItems = (getLastErrorFfm() == ERROR_NO_MORE_ITEMS);
 
         assertTrue(succeed || hasNoMoreItems);
     }

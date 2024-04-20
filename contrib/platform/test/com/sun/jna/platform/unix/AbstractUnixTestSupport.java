@@ -35,7 +35,7 @@ public abstract class AbstractUnixTestSupport extends AbstractPlatformTestSuppor
     }
 
     public static int getErrno() {
-        return Native.getLastError();
+        return Native.getLastErrorFfm();
     }
 
     /**

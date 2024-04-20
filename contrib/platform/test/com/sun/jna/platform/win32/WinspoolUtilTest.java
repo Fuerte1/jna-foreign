@@ -53,7 +53,7 @@ public class WinspoolUtilTest {
         WinNT.HANDLEByReference hbr = new WinNT.HANDLEByReference();
         boolean result = Winspool.INSTANCE.OpenPrinter("Will not be found", hbr, null);
         Assume.assumeFalse(result);
-        int error = Native.getLastError();
+        int error = Native.getLastErrorFfm();
         Assume.assumeTrue("Print service not available", error != WinError.RPC_S_SERVER_UNAVAILABLE);
     }
 

@@ -139,7 +139,7 @@ public class PsapiTest {
             IntByReference lpcbNeeded = new IntByReference();
 
             if (!Psapi.INSTANCE.EnumProcessModules(me, lphModule, lphModule.length, lpcbNeeded)) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             for (int i = 0; i < lpcbNeeded.getValue() / 4; i++) {
@@ -181,7 +181,7 @@ public class PsapiTest {
             IntByReference lpcbNeeded = new IntByReference();
 
             if (!Psapi.INSTANCE.EnumProcessModules(me, lphModule, lphModule.length, lpcbNeeded)) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             for (int i = 0; i < lpcbNeeded.getValue() / 4; i++) {
@@ -193,7 +193,7 @@ public class PsapiTest {
             MODULEINFO lpmodinfo = new MODULEINFO();
 
             if (!Psapi.INSTANCE.GetModuleInformation(me, list.get(0), lpmodinfo, lpmodinfo.size())) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             assertTrue("MODULEINFO.EntryPoint should not be null.", lpmodinfo.EntryPoint != null);

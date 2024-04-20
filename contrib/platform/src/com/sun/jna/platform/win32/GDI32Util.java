@@ -75,7 +75,7 @@ public class GDI32Util {
     public static BufferedImage getScreenshot(HWND target) {
         RECT rect = new RECT();
         if (!User32.INSTANCE.GetWindowRect(target, rect)) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
         Rectangle jRectangle = rect.toRectangle();
         int windowWidth = jRectangle.width;
@@ -87,7 +87,7 @@ public class GDI32Util {
 
         HDC hdcTarget = User32.INSTANCE.GetDC(target);
         if (hdcTarget == null) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
 
         Win32Exception we = null;
@@ -107,22 +107,22 @@ public class GDI32Util {
         try {
             hdcTargetMem = GDI32.INSTANCE.CreateCompatibleDC(hdcTarget);
             if (hdcTargetMem == null) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             hBitmap = GDI32.INSTANCE.CreateCompatibleBitmap(hdcTarget, windowWidth, windowHeight);
             if (hBitmap == null) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             hOriginal = GDI32.INSTANCE.SelectObject(hdcTargetMem, hBitmap);
             if (hOriginal == null) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             // draw to the bitmap
             if (!GDI32.INSTANCE.BitBlt(hdcTargetMem, 0, 0, windowWidth, windowHeight, hdcTarget, 0, 0, GDI32.SRCCOPY)) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             BITMAPINFO bmi = new BITMAPINFO();
@@ -136,7 +136,7 @@ public class GDI32Util {
             int resultOfDrawing = GDI32.INSTANCE.GetDIBits(hdcTarget, hBitmap, 0, windowHeight, buffer, bmi,
                     WinGDI.DIB_RGB_COLORS);
             if (resultOfDrawing == 0 || resultOfDrawing == WinError.ERROR_INVALID_PARAMETER) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             int bufferSize = windowWidth * windowHeight;
@@ -153,7 +153,7 @@ public class GDI32Util {
                 HANDLE result = GDI32.INSTANCE.SelectObject(hdcTargetMem, hOriginal);
                 // failure modes are null or equal to HGDI_ERROR
                 if (result == null || WinGDI.HGDI_ERROR.equals(result)) {
-                    Win32Exception ex = new Win32Exception(Native.getLastError());
+                    Win32Exception ex = new Win32Exception(Native.getLastErrorFfm());
                     if (we != null) {
                         ex.addSuppressedReflected(we);
                     }
@@ -163,7 +163,7 @@ public class GDI32Util {
 
             if (hBitmap != null) {
                 if (!GDI32.INSTANCE.DeleteObject(hBitmap)) {
-                    Win32Exception ex = new Win32Exception(Native.getLastError());
+                    Win32Exception ex = new Win32Exception(Native.getLastErrorFfm());
                     if (we != null) {
                         ex.addSuppressedReflected(we);
                     }
@@ -174,7 +174,7 @@ public class GDI32Util {
             if (hdcTargetMem != null) {
                 // get rid of the device context when done
                 if (!GDI32.INSTANCE.DeleteDC(hdcTargetMem)) {
-                    Win32Exception ex = new Win32Exception(Native.getLastError());
+                    Win32Exception ex = new Win32Exception(Native.getLastErrorFfm());
                     if (we != null) {
                         ex.addSuppressedReflected(we);
                     }

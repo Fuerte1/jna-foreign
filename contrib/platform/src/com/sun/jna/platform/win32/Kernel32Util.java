@@ -217,7 +217,7 @@ public abstract class Kernel32Util implements WinDef {
                 WinNT.LocaleMacros.MAKELANGID(primaryLangId, sublangId),
                 buffer, 0, null);
         if (nLen == 0) {
-            throw new LastErrorException(Native.getLastError());
+            throw new LastErrorException(Native.getLastErrorFfm());
         }
 
         Pointer ptr = buffer.getValue();

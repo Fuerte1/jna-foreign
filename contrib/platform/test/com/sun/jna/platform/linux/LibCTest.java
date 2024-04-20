@@ -77,7 +77,7 @@ public class LibCTest extends TestCase {
         String testDirectory = "/";
 
         int ret = LibC.INSTANCE.statvfs(testDirectory, vfs);
-        int errno = Native.getLastError();
+        int errno = Native.getLastErrorFfm();
 
         assertEquals(String.format("statvfs call failed for: %s, errno: %d", testDirectory, errno), 0, ret);
 

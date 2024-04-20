@@ -33,9 +33,12 @@ import com.sun.jna.ptr.PointerByReference;
 import com.sun.jna.ptr.ShortByReference;
 
 import junit.framework.TestCase;
+import org.junit.Assert;
+import org.junit.Test;
 
-public class ByReferenceToStringTest extends TestCase {
+public class ByReferenceToStringTest {
 
+    @Test
     public void testToStrings() {
         LongByReference lbr = new LongByReference(42L);
         parseAndTest(lbr.toString(), "long", "0x2a (42)");
@@ -74,9 +77,17 @@ public class ByReferenceToStringTest extends TestCase {
                 NativeLong.SIZE > 4 ? "0xffffffffffffffd6 (-42)" : "0xffffffd6 (-42)");
 
         PointerByReference pbr = new PointerByReference(Pointer.NULL);
-        assertTrue(pbr.toString(), pbr.toString().startsWith("null@0x"));
+        if (Native.jni) {
+            Assert.assertTrue(pbr.toString(), pbr.toString().startsWith("null@0x"));
+        } else {
+            Assert.assertTrue(pbr.toString(), pbr.toString().startsWith("allocated@0x"));
+        }
         pbr = new PointerByReference(new Pointer(42));
-        parseAndTest(pbr.toString(), "Pointer", "native");
+        if (Native.jni) {
+            parseAndTest(pbr.toString(), "Pointer", "native");
+        } else {
+            parseAndTest(pbr.toString(), "allocated", null);
+        }
     }
 
     /**
@@ -93,8 +104,8 @@ public class ByReferenceToStringTest extends TestCase {
      */
     private void parseAndTest(String s, String beforeAt, String afterEquals) {
         String[] atSplit = s.split("@");
-        assertEquals("Incorrect type prefix", beforeAt, atSplit[0]);
+        Assert.assertEquals("Incorrect type prefix", beforeAt, atSplit[0]);
         String[] equalsSplit = atSplit[1].split("=");
-        assertEquals("Incorrect value string", afterEquals, equalsSplit[1]);
+        Assert.assertEquals("Incorrect value string", afterEquals, equalsSplit.length >= 2 ? equalsSplit[1] : null);
     }
 }

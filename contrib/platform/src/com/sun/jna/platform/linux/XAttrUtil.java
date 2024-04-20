@@ -81,7 +81,7 @@ public abstract class XAttrUtil {
     public static void setXAttr(String path, String name, byte[] value) throws IOException {
         int retval = XAttr.INSTANCE.setxattr(path, name, value, new size_t(value.length), 0);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }
@@ -127,7 +127,7 @@ public abstract class XAttrUtil {
     public static void lSetXAttr(String path, String name, byte[] value) throws IOException {
         final int retval = XAttr.INSTANCE.lsetxattr(path, name, value, new size_t(value.length), 0);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }
@@ -170,7 +170,7 @@ public abstract class XAttrUtil {
     public static void fSetXAttr(int fd, String name, byte[] value) throws IOException {
         final int retval = XAttr.INSTANCE.fsetxattr(fd, name, value, new size_t(value.length), 0);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }
@@ -218,14 +218,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.getxattr(path, name, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             valueMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.getxattr(path, name, valueMem, new size_t(valueMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -251,7 +251,7 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.getxattr(path, name, (Memory) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
@@ -262,7 +262,7 @@ public abstract class XAttrUtil {
             valueMem = new Memory(retval.longValue());
             retval = XAttr.INSTANCE.getxattr(path, name, valueMem, new size_t(valueMem.size()));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -318,14 +318,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.lgetxattr(path, name, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             valueMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.lgetxattr(path, name, valueMem, new size_t(valueMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -352,7 +352,7 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.lgetxattr(path, name, (Memory) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
@@ -363,7 +363,7 @@ public abstract class XAttrUtil {
             valueMem = new Memory(retval.longValue());
             retval = XAttr.INSTANCE.lgetxattr(path, name, valueMem, new size_t(valueMem.size()));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -416,14 +416,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.fgetxattr(fd, name, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             valueMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.fgetxattr(fd, name, valueMem, new size_t(valueMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -449,7 +449,7 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.fgetxattr(fd, name, (Memory) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
@@ -460,7 +460,7 @@ public abstract class XAttrUtil {
             valueMem = new Memory(retval.longValue());
             retval = XAttr.INSTANCE.fgetxattr(fd, name, valueMem, new size_t(valueMem.size()));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -498,14 +498,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.listxattr(path, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             listMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.listxattr(path, listMem, new size_t(listMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -545,14 +545,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.llistxattr(path, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             listMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.llistxattr(path, listMem, new size_t(listMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -590,14 +590,14 @@ public abstract class XAttrUtil {
         do {
             retval = XAttr.INSTANCE.flistxattr(fd, (byte[]) null, size_t.ZERO);
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 throw new IOException("errno: " + eno);
             }
 
             listMem = new byte[retval.intValue()];
             retval = XAttr.INSTANCE.flistxattr(fd, listMem, new size_t(listMem.length));
             if (retval.longValue() < 0) {
-                eno = Native.getLastError();
+                eno = Native.getLastErrorFfm();
                 if (eno != XAttr.ERANGE) {
                     throw new IOException("errno: " + eno);
                 }
@@ -618,7 +618,7 @@ public abstract class XAttrUtil {
     public static void removeXAttr(String path, String name) throws IOException {
         final int retval = XAttr.INSTANCE.removexattr(path, name);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }
@@ -634,7 +634,7 @@ public abstract class XAttrUtil {
     public static void lRemoveXAttr(String path, String name) throws IOException {
         final int retval = XAttr.INSTANCE.lremovexattr(path, name);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }
@@ -649,7 +649,7 @@ public abstract class XAttrUtil {
     public static void fRemoveXAttr(int fd, String name) throws IOException {
         final int retval = XAttr.INSTANCE.fremovexattr(fd, name);
         if (retval != 0) {
-            final int eno = Native.getLastError();
+            final int eno = Native.getLastErrorFfm();
             throw new IOException("errno: " + eno);
         }
     }

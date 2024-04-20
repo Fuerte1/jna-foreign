@@ -83,7 +83,7 @@ class JnafAdvapi32UtilTest {
                 Kernel32Util.formatMessage(3));
         assertEquals(0, Kernel32.INSTANCE.GetLastError());
         assertEquals(0, Kernel32.INSTANCE.GetLastError());
-        assertEquals(0, Native.getLastError());
+        assertEquals(0, Native.getLastErrorFfm());
     }
 
     @Test

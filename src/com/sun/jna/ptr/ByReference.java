@@ -54,7 +54,6 @@ public abstract class ByReference extends PointerType {
      *            <code>setValue(&lt;T&gt;)</code> and
      *            <code>&lt;T&gt; getValue()</code> methods.
      */
-    @Deprecated
     protected ByReference(int dataSize) {
         setPointer(new Memory(dataSize));
     }

@@ -92,11 +92,19 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
         <configuration>
+          <argLine>-Djna.jni=true</argLine>
           <additionalClasspathElements>
             <additionalClasspathElement>${basedir}/build/native-win32-x86-64</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/build.eclipse/classes</additionalClasspathElement>
           </additionalClasspathElements>
+          <systemProperties>
+            <property>
+              <name>jna.jni</name>
+              <value>true</value>
+            </property>
+          </systemProperties>
           <systemPropertyVariables>
+            <jna.jni>true</jna.jni>
             <jna.boot.library.path>build/native-win32-x86-64</jna.boot.library.path>
           </systemPropertyVariables>
         </configuration>

@@ -49,7 +49,7 @@ public class WinspoolTest {
         HANDLEByReference hbr = new HANDLEByReference();
         boolean result = Winspool.INSTANCE.OpenPrinter("Will not be found", hbr, null);
         Assume.assumeFalse(result);
-        int error = Native.getLastError();
+        int error = Native.getLastErrorFfm();
         Assume.assumeTrue("Print service not available", error != WinError.RPC_S_SERVER_UNAVAILABLE);
     }
 
@@ -113,14 +113,14 @@ public class WinspoolTest {
         boolean result = Winspool.INSTANCE.OpenPrinter("1234567890A123", hbr, null);
         assertFalse("OpenPrinter should return false on failure.", result);
         assertNull("The pointer-to-a-printer-handle should be null on failure.", hbr.getValue());
-        assertEquals("GetLastError() should return ERROR_INVALID_PRINTER_NAME", WinError.ERROR_INVALID_PRINTER_NAME, Native.getLastError());
+        assertEquals("GetLastError() should return ERROR_INVALID_PRINTER_NAME", WinError.ERROR_INVALID_PRINTER_NAME, Native.getLastErrorFfm());
     }
 
     @Test
     public void testClosePrinter() {
         boolean result = Winspool.INSTANCE.ClosePrinter(null);
         assertFalse("ClosePrinter should return false on failure.", result);
-        assertEquals("GetLastError() should return ERROR_INVALID_HANDLE", WinError.ERROR_INVALID_HANDLE, Native.getLastError());
+        assertEquals("GetLastError() should return ERROR_INVALID_HANDLE", WinError.ERROR_INVALID_HANDLE, Native.getLastErrorFfm());
     }
 
     @Test

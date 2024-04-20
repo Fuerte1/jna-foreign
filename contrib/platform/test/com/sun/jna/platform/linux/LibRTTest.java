@@ -69,28 +69,28 @@ public class LibRTTest {
         String share = "/mmapToShm" + Long.toString(n) + "test";
         // Get a file descriptor to the share.
         int fd = LIBRT.shm_open(share, O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
-        assertNotEquals("Failed to shm_open " + share + ". Error: " + Native.getLastError(), -1, fd);
+        assertNotEquals("Failed to shm_open " + share + ". Error: " + Native.getLastErrorFfm(), -1, fd);
         try {
             // Multiply by 4 to handle all possible encodings
             int bufLen = 4 * (share.length() + 1);
             size_t length = new size_t(bufLen);
             // Allocate memory to the share (fills with null bytes)
             int ret = LibCUtil.ftruncate(fd, bufLen);
-            assertNotEquals("Failed to ftruncate. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed to ftruncate. Error: " + Native.getLastErrorFfm(), -1, ret);
             // Map a pointer to the share. Offset must be a multiple of page size
             Pointer p = LibCUtil.mmap(null, bufLen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            assertNotEquals("Failed mmap to new share. Error: " + Native.getLastError(), MAP_FAILED, p);
+            assertNotEquals("Failed mmap to new share. Error: " + Native.getLastErrorFfm(), MAP_FAILED, p);
             // We can now close the file descriptor
             ret = LIBC.close(fd);
-            assertNotEquals("Failed to close file descriptor. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed to close file descriptor. Error: " + Native.getLastErrorFfm(), -1, ret);
             // Write some bytes to the share. The name is a suitable candidate
             p.setString(0, share);
             // Sync from memory to share
             ret = LIBC.msync(p, length, MS_SYNC);
-            assertNotEquals("Failed msync. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed msync. Error: " + Native.getLastErrorFfm(), -1, ret);
             // Unmap the share
             ret = LIBC.munmap(p, length);
-            assertNotEquals("Failed munmap. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed munmap. Error: " + Native.getLastErrorFfm(), -1, ret);
             // p now points to invalid memory
             p = null;
 
@@ -98,30 +98,30 @@ public class LibRTTest {
             // Calling with both O_CREAT | O_EXCL should fail since the share already exists
             fd = LIBRT.shm_open(share, O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
             Assert.assertEquals("Re-creating existing share should have failed", -1, fd);
-            Assert.assertEquals("Re-creating existing share errno should be EEXIST", EEXIST, Native.getLastError());
+            Assert.assertEquals("Re-creating existing share errno should be EEXIST", EEXIST, Native.getLastErrorFfm());
             // So let's not recreate it, instead get a file descriptor to the existing share
             fd = LIBRT.shm_open(share, O_RDWR, S_IRWXU);
-            assertNotEquals("Failed to re-open " + share + ". Error: " + Native.getLastError(), -1, fd);
+            assertNotEquals("Failed to re-open " + share + ". Error: " + Native.getLastErrorFfm(), -1, fd);
             // Map another pointer to the share. Use the util version to test it
             Pointer q = LibCUtil.mmap(null, bufLen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            assertNotEquals("Failed mmap to existing share. Error: " + Native.getLastError(), MAP_FAILED, q);
+            assertNotEquals("Failed mmap to existing share. Error: " + Native.getLastErrorFfm(), MAP_FAILED, q);
             // Close the file descriptor
             ret = LIBC.close(fd);
-            assertNotEquals("Failed to close file descriptor. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed to close file descriptor. Error: " + Native.getLastErrorFfm(), -1, ret);
             // Check that the bytes we wrote are still there
             Assert.assertEquals("Bytes written to share don't match", share, q.getString(0));
             // Unmap the share
             ret = LIBC.munmap(q, length);
-            assertNotEquals("Failed munmap. Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed munmap. Error: " + Native.getLastErrorFfm(), -1, ret);
             // q now points to invalid memory
             q = null;
 
             // Unlink the share
             ret = LIBRT.shm_unlink(share);
-            assertNotEquals("Failed to shm_unlink " + share + ". Error: " + Native.getLastError(), -1, ret);
+            assertNotEquals("Failed to shm_unlink " + share + ". Error: " + Native.getLastErrorFfm(), -1, ret);
             // Should be able to re-create now
             fd = LIBRT.shm_open(share, O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
-            assertNotEquals("Failed to reopen unlinked " + share + ". Error: " + Native.getLastError(), -1, fd);
+            assertNotEquals("Failed to reopen unlinked " + share + ". Error: " + Native.getLastErrorFfm(), -1, fd);
         } finally {
             LIBRT.shm_unlink(share);
         }

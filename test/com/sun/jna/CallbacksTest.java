@@ -859,7 +859,6 @@ public class CallbacksTest implements Paths {
     }
 
     @Test
-    @Ignore("junit.framework.AssertionFailedError: Default handler not called")
     public void testDefaultCallbackExceptionHandler() {
         final RuntimeException ERROR = new RuntimeException(getName());
         PrintStream ps = System.err;
@@ -1482,16 +1481,16 @@ public class CallbacksTest implements Paths {
         final int GET_MODULE_HANDLE_FROM_ADDRESS = 0x4;
         PointerByReference pref = new PointerByReference();
         int result = f.invokeInt(new Object[] { Integer.valueOf(GET_MODULE_HANDLE_FROM_ADDRESS), fp, pref });
-        Assert.assertTrue("GetModuleHandleEx(fptr) failed: " + Native.getLastError(), result != 0);
+        Assert.assertTrue("GetModuleHandleEx(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
 
         f = kernel32.getFunction("GetModuleFileNameW");
         char[] buf = new char[1024];
         result = f.invokeInt(new Object[] { pref.getValue(), buf, buf.length });
-        Assert.assertTrue("GetModuleFileName(fptr) failed: " + Native.getLastError(), result != 0);
+        Assert.assertTrue("GetModuleFileName(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
 
         f = kernel32.getFunction("GetModuleHandleW");
         Pointer handle = f.invokePointer(new Object[] { Native.jnidispatchPath != null ? Native.jnidispatchPath : "jnidispatch" });
-        Assert.assertNotNull("GetModuleHandle(\"jnidispatch\") failed: " + Native.getLastError(), handle);
+        Assert.assertNotNull("GetModuleHandle(\"jnidispatch\") failed: " + Native.getLastErrorFfm(), handle);
         Assert.assertEquals("Wrong module HANDLE for DLL function pointer", handle, pref.getValue());
 
         // Check slot re-use

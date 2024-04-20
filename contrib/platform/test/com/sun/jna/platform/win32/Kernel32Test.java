@@ -1660,13 +1660,13 @@ public class Kernel32Test extends TestCase {
             hModule = Kernel32.INSTANCE.LoadLibraryEx(new File(winDir, "explorer.exe").getAbsolutePath(), null,
                     Kernel32.LOAD_LIBRARY_AS_DATAFILE);
             if (hModule == null) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
             assertNotNull("hModule should not be null.", hModule);
         } finally {
             if (hModule != null) {
                 if (!Kernel32.INSTANCE.FreeLibrary(hModule)) {
-                    throw new Win32Exception(Native.getLastError());
+                    throw new Win32Exception(Native.getLastErrorFfm());
                 }
             }
         }

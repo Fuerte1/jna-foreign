@@ -63,7 +63,7 @@ public class WininetUtil {
             // once to get the size into the IntByReference
             // then again to get the actual item
             cacheHandle = Wininet.INSTANCE.FindFirstUrlCacheEntry(null, null, size);
-            lastError = Native.getLastError();
+            lastError = Native.getLastErrorFfm();
 
             // if there's nothing in the cache, we're done.
             if (lastError == WinError.ERROR_NO_MORE_ITEMS) {
@@ -76,7 +76,7 @@ public class WininetUtil {
             cacheHandle = Wininet.INSTANCE.FindFirstUrlCacheEntry(null, entry, size);
 
             if (cacheHandle == null) {
-                throw new Win32Exception(Native.getLastError());
+                throw new Win32Exception(Native.getLastErrorFfm());
             }
 
             items.add(entry);
@@ -90,7 +90,7 @@ public class WininetUtil {
                 boolean result = Wininet.INSTANCE.FindNextUrlCacheEntry(cacheHandle, null, size);
 
                 if (!result) {
-                    lastError = Native.getLastError();
+                    lastError = Native.getLastErrorFfm();
                     if (lastError == WinError.ERROR_NO_MORE_ITEMS) {
                         break;
                     } else if (lastError != WinError.ERROR_SUCCESS && lastError != WinError.ERROR_INSUFFICIENT_BUFFER) {
@@ -102,7 +102,7 @@ public class WininetUtil {
                 result = Wininet.INSTANCE.FindNextUrlCacheEntry(cacheHandle, entry, size);
 
                 if (!result) {
-                    lastError = Native.getLastError();
+                    lastError = Native.getLastErrorFfm();
                     if (lastError == WinError.ERROR_NO_MORE_ITEMS) {
                         break;
                     } else if (lastError != WinError.ERROR_SUCCESS && lastError != WinError.ERROR_INSUFFICIENT_BUFFER) {
@@ -122,7 +122,7 @@ public class WininetUtil {
             if (cacheHandle != null) {
                 if (!Wininet.INSTANCE.FindCloseUrlCache(cacheHandle)) {
                     if (we != null) {
-                        Win32Exception e = new Win32Exception(Native.getLastError());
+                        Win32Exception e = new Win32Exception(Native.getLastErrorFfm());
                         e.addSuppressedReflected(we);
                         we = e;
                     }

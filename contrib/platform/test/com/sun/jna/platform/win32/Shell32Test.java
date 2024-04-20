@@ -209,7 +209,7 @@ public class Shell32Test extends TestCase {
             assertFalse("ShellExecuteEx should have returned false - action verb was bogus.",
                         Shell32.INSTANCE.ShellExecuteEx(lpExecInfo));
             assertEquals("GetLastError() should have been set to ERROR_NO_ASSOCIATION because of bogus action",
-                         W32Errors.ERROR_NO_ASSOCIATION, Native.getLastError());
+                         W32Errors.ERROR_NO_ASSOCIATION, Native.getLastErrorFfm());
         } finally {
             if (file.exists()) {
                 file.delete();

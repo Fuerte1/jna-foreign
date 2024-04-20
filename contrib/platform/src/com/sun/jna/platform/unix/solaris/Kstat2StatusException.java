@@ -67,7 +67,7 @@ public class Kstat2StatusException extends RuntimeException {
     private static String formatMessage(int ks) {
         String status = Kstat2.INSTANCE.kstat2_status_string(ks);
         if (ks == Kstat2.KSTAT2_S_SYS_FAIL) {
-            status += " (errno=" + Native.getLastError() + ")";
+            status += " (errno=" + Native.getLastErrorFfm() + ")";
         }
         return "Kstat2Status error code " + ks + ": " + status;
     }

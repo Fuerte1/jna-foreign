@@ -59,7 +59,7 @@ public class VersionUtil {
         // Reading version info failed.
         // throw a Win32Exception with GetLastError()
         if (versionLength == 0) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
 
         // buffer to hold version info
@@ -69,7 +69,7 @@ public class VersionUtil {
         PointerByReference lplpBuffer = new PointerByReference();
 
         if (!Version.INSTANCE.GetFileVersionInfo(filePath, 0, versionLength, lpData)) {
-            throw new Win32Exception(Native.getLastError());
+            throw new Win32Exception(Native.getLastErrorFfm());
         }
 
         // here to make VerQueryValue happy.

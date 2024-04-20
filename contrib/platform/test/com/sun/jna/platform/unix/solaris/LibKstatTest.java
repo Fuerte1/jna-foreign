@@ -197,7 +197,7 @@ public class LibKstatTest extends TestCase {
     private static boolean kstatRead(KstatCtl kc, Kstat ksp) {
         int retry = 0;
         while (0 > LibKstat.INSTANCE.kstat_read(kc, ksp, null)) {
-            if (LibKstat.EAGAIN != Native.getLastError() || 5 <= ++retry) {
+            if (LibKstat.EAGAIN != Native.getLastErrorFfm() || 5 <= ++retry) {
                 fail(String.format("Failed to read kstat %s:%d:%s", new String(ksp.ks_module).trim(), ksp.ks_instance,
                         new String(ksp.ks_name).trim()));
                 return false;

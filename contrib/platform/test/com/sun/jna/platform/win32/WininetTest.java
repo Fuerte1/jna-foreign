@@ -41,7 +41,7 @@ public class WininetTest extends AbstractWin32TestSupport {
     @Test
     public void testFindCloseUrlCache() {
         boolean result = Wininet.INSTANCE.FindCloseUrlCache(null);
-        int lastError = Native.getLastError();
+        int lastError = Native.getLastErrorFfm();
         assertFalse("FindCloseUrlCache should return false with an invalid handle.", result);
         assertEquals("GetLastError should return ERROR_INVALID_HANDLE", WinError.ERROR_INVALID_HANDLE, lastError);
     }
@@ -49,7 +49,7 @@ public class WininetTest extends AbstractWin32TestSupport {
     @Test
     public void testDeleteUrlCacheEntry() {
         boolean result = Wininet.INSTANCE.DeleteUrlCacheEntry("c:\\tempWinInetTest");
-        int lastError = Native.getLastError();
+        int lastError = Native.getLastErrorFfm();
         assertFalse("DeleteUrlCacheEntry should return false with a bogus path.", result);
         assertEquals("GetLastError should return ERROR_FILE_NOT_FOUND", WinError.ERROR_FILE_NOT_FOUND, lastError);
     }
@@ -58,7 +58,7 @@ public class WininetTest extends AbstractWin32TestSupport {
     public void testFindFirstUrlCacheEntry() {
         IntByReference size = new IntByReference();
         HANDLE cacheHandle = Wininet.INSTANCE.FindFirstUrlCacheEntry(null, null, size);
-        int lastError = Native.getLastError();
+        int lastError = Native.getLastErrorFfm();
         // ERROR_INSUFFICIENT_BUFFER is returned when there are items in the cache
         // ERROR_NO_MORE_ITEMS is returned when the cache is empty.
         // Both are acceptable for a mapping test where the state of the cache would be unknown.
@@ -77,14 +77,14 @@ public class WininetTest extends AbstractWin32TestSupport {
             // once to get the size into the IntByReference
             // then again to get the actual item
             cacheHandle = Wininet.INSTANCE.FindFirstUrlCacheEntry(null, null, size);
-            lastError = Native.getLastError();
+            lastError = Native.getLastErrorFfm();
             assertNull("FindFirstUrlCacheEntry should have returned null.", cacheHandle);
 
             // if the Wininet cache is empty, exercise FindNextUrlCacheEntry with an invalid handle
             // just to ensure the mapping gets tested
             if (lastError == WinError.ERROR_NO_MORE_ITEMS) {
                 boolean result = Wininet.INSTANCE.FindNextUrlCacheEntry(null, null, size);
-                lastError = Native.getLastError();
+                lastError = Native.getLastErrorFfm();
                 assertFalse("FindNextUrlCacheEntry should have returned false.", result);
                 assertEquals("GetLastError should have returned ERROR_INVALID_PARAMETER.",
                         WinError.ERROR_INVALID_PARAMETER, lastError);
@@ -96,7 +96,7 @@ public class WininetTest extends AbstractWin32TestSupport {
 
             INTERNET_CACHE_ENTRY_INFO entry = new INTERNET_CACHE_ENTRY_INFO(size.getValue());
             cacheHandle = Wininet.INSTANCE.FindFirstUrlCacheEntry(null, entry, size);
-            lastError = Native.getLastError();
+            lastError = Native.getLastErrorFfm();
 
             assertNotNull("FindFirstUrlCacheEntry should not have returned null.", cacheHandle);
             assertEquals("GetLastError should have returned ERROR_SUCCESS.", WinError.ERROR_SUCCESS, lastError);
@@ -107,21 +107,21 @@ public class WininetTest extends AbstractWin32TestSupport {
             // once to get the size into the IntByReference
             // then again to get the actual item
             boolean result = Wininet.INSTANCE.FindNextUrlCacheEntry(cacheHandle, null, size);
-            lastError = Native.getLastError();
+            lastError = Native.getLastErrorFfm();
             assertFalse("FindNextUrlCacheEntry should have returned false.", result);
             assertEquals("GetLastError should have returned ERROR_INSUFFICIENT_BUFFER.",
                     WinError.ERROR_INSUFFICIENT_BUFFER, lastError);
 
             entry = new INTERNET_CACHE_ENTRY_INFO(size.getValue());
             result = Wininet.INSTANCE.FindNextUrlCacheEntry(cacheHandle, entry, size);
-            lastError = Native.getLastError();
+            lastError = Native.getLastErrorFfm();
             assertTrue("FindNextUrlCacheEntry should have returned true.", result);
             assertEquals("GetLastError should have returned ERROR_SUCCESS.", WinError.ERROR_SUCCESS, lastError);
 
         } finally {
             if (cacheHandle != null) {
                 if (!Wininet.INSTANCE.FindCloseUrlCache(cacheHandle)) {
-                    throw new Win32Exception(Native.getLastError());
+                    throw new Win32Exception(Native.getLastErrorFfm());
                 }
             }
         }

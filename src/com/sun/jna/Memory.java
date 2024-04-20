@@ -116,7 +116,6 @@ public class Memory extends Pointer implements Closeable {
      *
      * @param size number of <em>bytes</em> of space to allocate
      */
-    @Deprecated
     public Memory(long size) {
         this(Arena.ofAuto(), size);
     }
