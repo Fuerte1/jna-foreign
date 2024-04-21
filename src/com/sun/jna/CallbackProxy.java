@@ -23,6 +23,8 @@
  */
 package com.sun.jna;
 
+import java.lang.foreign.MemorySegment;
+
 /** Placeholder proxy interface to allow an InvocationHandler to convert
  * arguments/return values on callback methods.  This is a special sub-interface
  * of {@link Callback} which expects its arguments in a single Object array

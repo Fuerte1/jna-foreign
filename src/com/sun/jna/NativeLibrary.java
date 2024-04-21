@@ -149,7 +149,7 @@ public class NativeLibrary implements Closeable {
             synchronized(functions) {
                 Function f = new Function(this, "GetLastError", Function.ALT_CONVENTION, encoding) {
                         @Override
-                        Object invoke(Arena arena, Object[] args, Class<?> returnType, boolean b, int fixedArgs) {
+                        Object invoke(Arena arena, Object[] args, Class<?>[] paramTypes, Class<?> returnType, boolean b, int fixedArgs) {
                             return Native.getLastErrorFfm();
                         }
 

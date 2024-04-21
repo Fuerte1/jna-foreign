@@ -26,6 +26,7 @@ package com.sun.jna;
 import com.sun.jna.internal.Cleaner;
 import java.io.Closeable;
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationHandler;
@@ -68,7 +69,7 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
 
     static {
         try {
-            PROXY_CALLBACK_METHOD = CallbackProxy.class.getMethod("callback", new Class[] { Object[].class });
+            PROXY_CALLBACK_METHOD = CallbackProxy.class.getMethod("callback", Object[].class);
         } catch(Exception e) {
             throw new Error("Error looking up CallbackProxy.callback() method");
         }
@@ -89,6 +90,8 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
     }
 
     private static final Map<Callback, CallbackThreadInitializer> initializers = new WeakHashMap<>();
+    public ForeignFunction foreignFunction = new ForeignFunction(null); // TODO: name?
+
     /**
      * @param cb The {@link Callback} instance
      * @param initializer The {@link CallbackThreadInitializer} - if {@code null} then the
@@ -268,6 +271,7 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
         }
 
         String encoding = Native.getStringEncoding(callback.getClass());
+        MemorySegment memorySegment = null;
         long peer = 0;
         if (direct) {
             method = getCallbackMethod(callback);
@@ -278,16 +282,26 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
                 && DLL_CALLBACK_CLASS.isInstance(callback)) {
                 flags |= Native.CB_OPTION_IN_DLL;
             }
-            peer = Native.createNativeCallback(callback, method,
-                                               nativeParamTypes, returnType,
-                                               callingConvention, flags,
-                                               encoding);
+            if (Native.jni) {
+                peer = Native.createNativeCallback(callback, method,
+                        nativeParamTypes, returnType,
+                        callingConvention, flags,
+                        encoding);
+            } else {
+                memorySegment = Native.createNativeCallbackFfm(this,
+                        callback, method,
+                        nativeParamTypes, returnType,
+                        callingConvention, flags,
+                        encoding);
+            }
         } else {
+            Method callbackMethod = null;
             if (callback instanceof CallbackProxy) {
                 proxy = (CallbackProxy)callback;
             }
             else {
-                proxy = new DefaultCallbackProxy(getCallbackMethod(callback), mapper, encoding);
+                callbackMethod = getCallbackMethod(callback);
+                proxy = new DefaultCallbackProxy(callbackMethod, mapper, encoding);
             }
             nativeParamTypes = proxy.getParameterTypes();
             returnType = proxy.getReturnType();
@@ -324,15 +338,37 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
             int flags = DLL_CALLBACK_CLASS != null
                 && DLL_CALLBACK_CLASS.isInstance(callback)
                 ? Native.CB_OPTION_IN_DLL : 0;
-            peer = Native.createNativeCallback(proxy, PROXY_CALLBACK_METHOD,
-                                               nativeParamTypes, returnType,
-                                               callingConvention, flags,
-                                               encoding);
+            if (Native.jni) {
+                peer = Native.createNativeCallback(proxy, PROXY_CALLBACK_METHOD,
+                        nativeParamTypes, returnType,
+                        callingConvention, flags,
+                        encoding);
+            } else {
+                if (callbackMethod != null) {
+                    memorySegment = Native.createNativeCallbackFfm(this,
+                            callback, callbackMethod,
+                            nativeParamTypes, returnType,
+                            callingConvention, flags,
+                            encoding);
+                } else {
+                    memorySegment = Native.createNativeCallbackFfm(this,
+                            proxy, PROXY_CALLBACK_METHOD,
+                            nativeParamTypes, returnType,
+                            callingConvention, flags,
+                            encoding);
+                }
+            }
         }
-        cbstruct = peer != 0 ? new Pointer(peer) : null;
-        if(peer != 0) {
-            allocatedMemory.put(peer, new WeakReference<>(this));
-            cleanable = Cleaner.getCleaner().register(this, new CallbackReferenceDisposer(cbstruct));
+        if (memorySegment != null) {
+            cbstruct = new Pointer(null, memorySegment);
+        } else {
+            if (peer != 0) {
+                cbstruct = new Pointer(peer);
+                allocatedMemory.put(peer, new WeakReference<>(this));
+                cleanable = Cleaner.getCleaner().register(this, new CallbackReferenceDisposer(cbstruct));
+            } else {
+                cbstruct = null;
+            }
         }
     }
 

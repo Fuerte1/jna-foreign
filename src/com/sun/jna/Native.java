@@ -34,6 +34,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.foreign.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
@@ -2216,6 +2219,53 @@ public final class Native implements Version {
                                                          int callingConvention,
                                                          int flags,
                                                          String encoding);
+
+    static synchronized MemorySegment createNativeCallbackFfm(
+            CallbackReference callbackReference,
+            Callback callback,
+            Method method,
+            Class<?>[] parameterTypes,
+            Class<?> returnType,
+            int callingConvention,
+            int flags,
+            String encoding) {
+        ForeignFunction foreignFunction = callbackReference.foreignFunction;
+        if (foreignFunction.symbolAddress == null || foreignFunction.lastReturnType != returnType) {
+            MethodType methodType = null;
+            Class<? extends Callback> aClass = callback.getClass();
+            if (callback instanceof CallbackProxy proxy) {
+//                aClass = proxy.getClass();
+                parameterTypes = method.getParameterTypes();
+                methodType = MethodType.methodType(MemorySegment.class, Object[].class);
+            }
+            foreignFunction.initFunctionDescriptor(returnType, false, null,
+                    parameterTypes, encoding);
+            MethodHandle methodHandle;
+            try {
+                String methodName = method.getName();
+                if (methodType == null) {
+                    methodType = foreignFunction.fd.toMethodType();
+                }
+                MethodHandles.Lookup lookup = MethodHandles.lookup();
+                int modifiers = method.getModifiers();
+                if (Modifier.isStatic(modifiers)) {
+                    methodHandle = lookup
+                        .findStatic(aClass, method.getName(), methodType);
+                } else {
+                    methodHandle = lookup
+                            .findVirtual(aClass, methodName, methodType);
+                    // TODO: the first parameter of methodHandle is now the class instance,
+                    // but that is missing from FunctionDescriptor, it only has the arguments, what to do?
+                    // Answer: add callback as the first parameter.
+                }
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            foreignFunction.callHandle = methodHandle;
+            foreignFunction.initUpcallStub();
+        }
+        return foreignFunction.symbolAddress;
+    }
 
     /**
      * Call the native function.

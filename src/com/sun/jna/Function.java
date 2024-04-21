@@ -60,9 +60,11 @@ import static java.lang.foreign.ValueLayout.*;
  */
 public class Function extends Pointer {
     private final MemorySegment symbolAddress;
-    private MethodHandle downcallHandle;
-    private Class<?> lastReturnType; // some functions are called with different parameters and return types
-    private java.util.function.Function<Object,Object> resultConverter;
+    private final ForeignFunction foreignFunction;
+//    private MethodHandle downcallHandle;
+//    private Class<?> lastReturnType; // some functions are called with different parameters and return types
+//    private java.util.function.Function<Object,Object> resultConverter;
+//    private FunctionDescriptor functionDescriptor;
 
     /** Any argument which implements this interface will have the
      * {@link #read} method called immediately after function invocation.
@@ -275,6 +277,7 @@ public class Function extends Pointer {
                         + e.getMessage());
             }
         }
+        foreignFunction = new ForeignFunction(library, functionName, symbolAddress);
     }
 
     /**
@@ -305,6 +308,8 @@ public class Function extends Pointer {
         this.encoding = encoding != null
             ? encoding : Native.getDefaultStringEncoding();
         this.symbolAddress = null; // TODO
+        this.foreignFunction = new ForeignFunction(functionName);
+        foreignFunction.symbolAddress = functionAddress.segment;
     }
 
     private void checkCallingConvention(int convention)
@@ -384,7 +389,7 @@ public class Function extends Pointer {
                 }
             }
 
-            Object result = invoke(arena, args, nativeReturnType, allowObjects, fixedArgs);
+            Object result = invoke(arena, args, paramTypes, nativeReturnType, allowObjects, fixedArgs);
             // Convert the result to a custom value/type if appropriate
             if (resultConverter != null) {
                 FromNativeContext context;
@@ -432,7 +437,7 @@ public class Function extends Pointer {
     /* @see NativeLibrary#NativeLibrary(String,String,long,Map) implementation */
     Object invoke(Object[] args, Class<?> returnType, boolean allowObjects) {
         try (Arena arena = Native.arenaConfined()) {
-            return invoke(arena, args, returnType, allowObjects, 0);
+            return invoke(arena, args, null, returnType, allowObjects, 0);
         }
     }
 
@@ -522,214 +527,14 @@ public class Function extends Pointer {
         return result;
     }
 
-    Object invoke(Arena arena, Object[] args, Class<?> returnType, boolean allowObjects, int fixedArgs) {
+    Object invoke(Arena arena, Object[] args, Class<?>[] paramTypes, Class<?> returnType,
+                  boolean allowObjects, int fixedArgs) {
         if (Native.jni) {
             return invoke(args, returnType, allowObjects, fixedArgs);
         }
-        MemoryLayout resLayout;
-        if (this.downcallHandle == null || this.lastReturnType != returnType) {
-            lastReturnType = returnType;
-            if (returnType == null || returnType == void.class || returnType == Void.class) {
-                resLayout = null;
-            } else if (returnType == boolean.class || returnType == Boolean.class) {
-                resLayout = JAVA_BOOLEAN;
-            } else if (returnType == byte.class || returnType == Byte.class) {
-                resLayout = JAVA_BYTE;
-            } else if (returnType == short.class || returnType == Short.class) {
-                resLayout = JAVA_SHORT;
-            } else if (returnType == char.class || returnType == Character.class) {
-                resLayout = JAVA_CHAR;
-            } else if (returnType == int.class || returnType == Integer.class) {
-                resLayout = JAVA_INT;
-            } else if (returnType == long.class || returnType == Long.class) {
-                resLayout = JAVA_LONG;
-            } else if (returnType == float.class || returnType == Float.class) {
-                resLayout = JAVA_FLOAT;
-            } else if (returnType == double.class || returnType == Double.class) {
-                resLayout = JAVA_DOUBLE;
-            } else if (returnType == String.class) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            return Pointer.reinterpret(seg, -1)
-                                    .getString(0, Charset.forName(encoding));
-                        }
-                    }
-                    return null;
-                };
-            } else if (returnType == WString.class) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            String s = Pointer.reinterpret(seg, -1)
-                                    .getString(0, StandardCharsets.UTF_16LE);
-                            if (s != null) {
-                                return new WString(s);
-                            }
-                        }
-                    }
-                    return null;
-                };
-            } else if (Pointer.class.isAssignableFrom(returnType)) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            return new Pointer(null, seg);
-                        }
-                    }
-                    return null;
-                };
-            } else if (Structure.class.isAssignableFrom(returnType)) {
-                resLayout = ADDRESS;
-                if (Structure.ByValue.class.isAssignableFrom(returnType)) {
-                    Structure structure = Structure.newInstance((Class<? extends Structure>) returnType);
-                    if (structure.size() > JAVA_LONG.byteSize()) {
-                        resLayout = ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(structure.size(), JAVA_BYTE));
-                        throw new UnsupportedOperationException("Structure size " + structure.size()
-                                + " > " + JAVA_LONG.byteSize());
-                    }
-                    resultConverter = o -> {
-                        if (o instanceof MemorySegment seg) {
-//                            Pointer p = new Pointer(null, seg.reinterpret(1024 * 1024));
-//                            Native.invokeStructure(this, this.peer, callFlags, args,
-//                                    Structure.newInstance((Class<? extends Structure>) returnType));
-                            long address = seg.address();// address is the value it seems
-                            int byteSize = (int) JAVA_LONG.byteSize();
-                            byte[] bytes = new byte[byteSize];
-                            for (int i = 0; i < byteSize; i++) {
-                                bytes[i] = (byte) address;
-                                address >>= 8;
-                            }
-                            seg = MemorySegment.ofArray(bytes);
-                            Pointer p = new Pointer(null, seg);
-                            Structure s = Structure.newInstance((Class<? extends Structure>) returnType, p);
-                            s.useMemory(p);
-                            s.autoRead();
-                            return s;
-                        }
-                        return null;
-                    };
-                } else {
-                    resultConverter = o -> {
-                        if (o instanceof MemorySegment seg) {
-                            if (seg.address() != 0) {
-                                Pointer p = new Pointer(null, Pointer.reinterpret(seg, -1));
-                                Structure s = Structure.newInstance((Class<? extends Structure>) returnType, p);
-                                s.conditionalAutoRead();
-                                return s;
-                            }
-                        }
-                        return null;
-                    };
-                }
-            } else if (Callback.class.isAssignableFrom(returnType)) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, Pointer.reinterpret(seg, ADDRESS.byteSize()));
-                            return CallbackReference.getCallback(returnType, p);
-                        }
-                    }
-                    return null;
-                };
-            } else if (returnType == String[].class) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, Pointer.reinterpret(seg, -1));
-                            return p.getStringArray(0, encoding);
-                        }
-                    }
-                    return null;
-                };
-            } else if (returnType == WString[].class) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, seg);
-                            String[] arr = p.getWideStringArray(0);
-                            WString[] warr = new WString[arr.length];
-                            for (int i = 0; i < arr.length; i++) {
-                                warr[i] = new WString(arr[i]);
-                            }
-                            return warr;
-                        }
-                    }
-                    return null;
-                };
-            } else if (returnType == Pointer[].class) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            Pointer p = new Pointer(null, seg);
-                            return p.getPointerArray(0);
-                        }
-                    }
-                    return null;
-                };
-            } else if (allowObjects) {
-                resLayout = ADDRESS;
-                resultConverter = o -> {
-                    if (o instanceof MemorySegment seg) {
-                        if (seg.address() != 0) {
-                            if (!returnType.isAssignableFrom(o.getClass())) {
-                                throw new ClassCastException("Return type " + returnType
-                                        + " does not match result "
-                                        + o.getClass());
-                            }
-                        }
-                    }
-                    return null;
-                };
-            } else {
-                throw new IllegalArgumentException("Unsupported return type " + returnType + " in function " + getName());
-            }
-            FunctionDescriptor fd;
-            if (args != null) {
-                MemoryLayout[] argLayouts = new MemoryLayout[args.length];
-                for (int j = 0; j < args.length; j++) {
-                    Object a = args[j];
-                    argLayouts[j] = switch (a) {
-                        case null -> ADDRESS;
-                        case Byte _ -> JAVA_BYTE;
-                        case Character _ -> JAVA_CHAR;
-                        case Short _ -> JAVA_SHORT;
-                        case Integer _ -> JAVA_INT;
-                        case Long _ -> JAVA_LONG;
-                        case Float _ -> JAVA_FLOAT;
-                        case Double _ -> JAVA_DOUBLE;
-//                        case MemorySegmentReference ref -> {
-//                            if (ref.segment != null) {
-//                                yield ADDRESS;
-//                            } else {
-//                                MemorySegment.ofAddress(1234);
-//                                yield JAVA_LONG;
-//                            }
-//                        }
-                        case Structure.ByValue _ -> JAVA_LONG; // TODO
-                        default -> ADDRESS;
-                    };
-                }
-                if (resLayout == null) {
-                    fd = FunctionDescriptor.ofVoid(argLayouts);
-                } else {
-                    fd = FunctionDescriptor.of(resLayout, argLayouts);
-                }
-            } else {
-                if (resLayout == null) {
-                    fd = FunctionDescriptor.ofVoid();
-                } else {
-                    fd = FunctionDescriptor.of(resLayout);
-                }
-            }
-            this.downcallHandle = Linker.nativeLinker().downcallHandle(this.symbolAddress, fd);
+        if (foreignFunction.callHandle == null || foreignFunction.lastReturnType != returnType) {
+            foreignFunction.initFunctionDescriptor(returnType, allowObjects, args, paramTypes, encoding);
+            foreignFunction.initDownCallHandle();
         }
         Object[] foreignArgs = null;
         if (args != null) {
@@ -821,12 +626,12 @@ public class Function extends Pointer {
         }
         Object result;
         try {
-            result = this.downcallHandle.invokeWithArguments(foreignArgs);
+            result = foreignFunction.callHandle.invokeWithArguments(foreignArgs);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
-        if (resultConverter != null) {
-            result = resultConverter.apply(result);
+        if (foreignFunction.resultConverter != null) {
+            result = foreignFunction.resultConverter.apply(result);
         }
         if (converters != null) {
             for (Runnable r : converters) {
