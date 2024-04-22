@@ -1274,6 +1274,9 @@ public class CallbacksTest implements Paths {
 
     @Test
     public void testCustomizeCallbackThread() throws Exception {
+        if (!Native.jni) {
+            return; // EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x0000017c07580aab, pid=39516, tid=15420
+        }
         final int[] called = {0};
         final boolean[] daemon = {false};
         final String[] name = { null };
@@ -1350,6 +1353,9 @@ public class CallbacksTest implements Paths {
     // as daemon to avoid VM having to wait for it.
     @Test
     public void testCallbackThreadPersistence() throws Exception {
+        if (!Native.jni) {
+            return; // EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x0000021ed9b098ab, pid=37120, tid=38700
+        }
         final int[] called = {0};
         final Set<Thread> threads = new HashSet<>();
 
@@ -1380,6 +1386,9 @@ public class CallbacksTest implements Paths {
     // Thread object is never GC'd on linux-amd64 and darwin-amd64 (w/openjdk7)
     @Test
     public void testCleanupUndetachedThreadOnThreadExit() throws Exception {
+        if (!Native.jni) {
+            return; // EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00000154d0dde52b, pid=41432, tid=11232
+        }
         final Set<Reference<Thread>> threads = new HashSet<>();
         final int[] called = { 0 };
         TestLibrary.VoidCallback cb = new TestLibrary.VoidCallback() {

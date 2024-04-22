@@ -472,7 +472,11 @@ public class CallbackReference extends WeakReference<Callback> implements Closea
     /** Obtain a pointer to the native glue code for this callback. */
     public Pointer getTrampoline() {
         if (trampoline == null) {
-            trampoline = cbstruct.getPointer(0);
+            if (cbstruct.segment != null) {
+                trampoline = cbstruct;
+            } else { // jni
+                trampoline = cbstruct.getPointer(0);
+            }
         }
         return trampoline;
     }

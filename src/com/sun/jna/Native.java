@@ -2257,6 +2257,7 @@ public final class Native implements Version {
                     // TODO: the first parameter of methodHandle is now the class instance,
                     // but that is missing from FunctionDescriptor, it only has the arguments, what to do?
                     // Answer: add callback as the first parameter.
+                    methodHandle = MethodHandles.insertArguments(methodHandle, 0, callback);
                 }
             } catch (NoSuchMethodException | IllegalAccessException e) {
                 throw new RuntimeException(e);
@@ -2391,7 +2392,7 @@ public final class Native implements Version {
 
     /** Open the requested native library with default options. */
     static long open(String name) {
-        return foreignOpen(name, -1);
+        return openFfm(name, -1);
     }
 
     /** Open the requested native library with the specified platform-specific
@@ -2399,7 +2400,7 @@ public final class Native implements Version {
      */
     private static native long open(String name, int flags);
 
-    static long foreignOpen(String name, int flags) {
+    static long openFfm(String name, int flags) {
         if (jni) {
             return open(name, flags);
         }
@@ -2973,13 +2974,13 @@ public final class Native implements Version {
             // needed when the native thread is detached normally.
             nativeThreads.remove(thread);
             Pointer p = nativeThreadTerminationFlag.get();
-            setDetachState(true, 0);
+            setDetachStateFfm(true, 0);
         }
         else {
             if (!nativeThreads.containsKey(thread)) {
                 Pointer p = nativeThreadTerminationFlag.get();
                 nativeThreads.put(thread, p);
-                setDetachState(false, p.peer);
+                setDetachStateFfm(false, p.peer);
             }
         }
     }
@@ -2989,6 +2990,12 @@ public final class Native implements Version {
     }
 
     private static native void setDetachState(boolean detach, long terminationFlag);
+
+    private static void setDetachStateFfm(boolean detach, long terminationFlag) {
+        if (jni) {
+            setDetachState(detach, terminationFlag);
+        }
+    }
 
     private static class Buffers {
         static boolean isBuffer(Class<?> cls) {

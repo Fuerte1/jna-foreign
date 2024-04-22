@@ -266,7 +266,7 @@ public class NativeLibrary implements Closeable {
         //
         try {
             LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
-            handle = Native.foreignOpen(libraryPath, openFlags);
+            handle = Native.openFfm(libraryPath, openFlags);
         } catch(UnsatisfiedLinkError e) {
             // Add the system paths back for all fallback searching
             LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e.getMessage());
@@ -279,7 +279,7 @@ public class NativeLibrary implements Closeable {
             if (handle == 0) {
                 libraryPath = findLibraryPath(libraryName, searchPath);
                 LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
-                handle = Native.foreignOpen(libraryPath, openFlags);
+                handle = Native.openFfm(libraryPath, openFlags);
                 if (handle == 0) {
                     throw new UnsatisfiedLinkError("Failed to load library '" + libraryName + "'");
                 }
@@ -294,7 +294,7 @@ public class NativeLibrary implements Closeable {
                 try {
                     LOG.log(DEBUG_LOAD_LEVEL, "Preload (via System.loadLibrary) " + libraryName);
                     System.loadLibrary(libraryName);
-                    handle = Native.foreignOpen(libraryPath, openFlags);
+                    handle = Native.openFfm(libraryPath, openFlags);
                 }
                 catch(UnsatisfiedLinkError e2) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
@@ -310,7 +310,7 @@ public class NativeLibrary implements Closeable {
                 if (libraryPath != null) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
                     try {
-                        handle = Native.foreignOpen(libraryPath, openFlags);
+                        handle = Native.openFfm(libraryPath, openFlags);
                     }
                     catch(UnsatisfiedLinkError e2) {
                         LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
@@ -323,7 +323,7 @@ public class NativeLibrary implements Closeable {
                 for(String frameworkName : matchFramework(libraryName)) {
                     try {
                         LOG.log(DEBUG_LOAD_LEVEL, "Trying " + frameworkName);
-                        handle = Native.foreignOpen(frameworkName, openFlags);
+                        handle = Native.openFfm(frameworkName, openFlags);
                         break;
                     }
                     catch(UnsatisfiedLinkError e2) {
@@ -339,7 +339,7 @@ public class NativeLibrary implements Closeable {
                 if (libraryPath != null) {
                     LOG.log(DEBUG_LOAD_LEVEL, "Trying " + libraryPath);
                     try {
-                        handle = Native.foreignOpen(libraryPath, openFlags);
+                        handle = Native.openFfm(libraryPath, openFlags);
                     } catch(UnsatisfiedLinkError e2) {
                         LOG.log(DEBUG_LOAD_LEVEL, "Loading failed with message: " + e2.getMessage());
                         exceptions.add(e2);
@@ -353,7 +353,7 @@ public class NativeLibrary implements Closeable {
                     File embedded = Native.extractFromResourcePath(libraryName, (ClassLoader)options.get(Library.OPTION_CLASSLOADER));
                     if (embedded != null) {
                         try {
-                            handle = Native.foreignOpen(embedded.getAbsolutePath(), openFlags);
+                            handle = Native.openFfm(embedded.getAbsolutePath(), openFlags);
                             libraryPath = embedded.getAbsolutePath();
                         } finally {
                             // Don't leave temporary files around
@@ -539,7 +539,7 @@ public class NativeLibrary implements Closeable {
                     if (Native.jni) {
                         library = new NativeLibrary("<process>",
                                 null,
-                                Native.foreignOpen(null, openFlags(options)),
+                                Native.openFfm(null, openFlags(options)),
                                 options,
                                 null);
                     } else {
