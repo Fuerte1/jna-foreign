@@ -242,6 +242,8 @@ public class ForeignFunction {
                         valueLayout = JAVA_INT;
                     } else if (Long.class.equals(paramType) || long.class.equals(paramType)) {
                         valueLayout = JAVA_LONG;
+                    } else if (Boolean.class.equals(paramType) || boolean.class.equals(paramType)) {
+                        valueLayout = JAVA_BOOLEAN;
                     } else if (Float.class.equals(paramType) || float.class.equals(paramType)) {
                         valueLayout = JAVA_FLOAT;
                     } else if (Double.class.equals(paramType) || double.class.equals(paramType)) {
@@ -264,6 +266,7 @@ public class ForeignFunction {
                     case Short _ -> JAVA_SHORT;
                     case Integer _ -> JAVA_INT;
                     case Long _ -> JAVA_LONG;
+                    case Boolean _ -> JAVA_BOOLEAN;
                     case Float _ -> JAVA_FLOAT;
                     case Double _ -> JAVA_DOUBLE;
 //                        case MemorySegmentReference ref -> {

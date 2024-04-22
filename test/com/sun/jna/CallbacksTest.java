@@ -38,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.IntStream;
 
 import com.sun.jna.Callback.UncaughtExceptionHandler;
 import com.sun.jna.CallbacksTest.TestLibrary.CbCallback;
@@ -47,8 +45,9 @@ import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import com.sun.jna.win32.W32APIOptions;
 
-import junit.framework.TestCase;
 import org.junit.*;
+
+import static org.junit.Assert.*;
 
 /** Exercise callback-related functionality.
  *
@@ -343,7 +342,7 @@ public class CallbacksTest implements Paths {
     public void testNativeFunctionPointerStringValue() {
         Callback cb = CallbackReference.getCallback(TestLibrary.VoidCallback.class, new Pointer(getName().hashCode()));
         Class<?> cls = CallbackReference.findCallbackClass(cb.getClass());
-        Assert.assertTrue("toString should include Java Callback type: " + cb + " ("
+        assertTrue("toString should include Java Callback type: " + cb + " ("
                    + cls + ")", cb.toString().indexOf(cls.getName()) != -1);
     }
 
@@ -352,7 +351,7 @@ public class CallbacksTest implements Paths {
         Callback cb = CallbackReference.getCallback(TestLibrary.VoidCallback.class, new Pointer(getName().hashCode()));
         Callback cb2 = CallbackReference.getCallback(TestLibrary.VoidCallback.class, new Pointer(getName().hashCode()));
 
-        Assert.assertEquals("Callback lookups for same pointer should return same Callback object", cb, cb2);
+        assertEquals("Callback lookups for same pointer should return same Callback object", cb, cb2);
     }
 
     // Allow direct tests to override
@@ -371,10 +370,10 @@ public class CallbacksTest implements Paths {
             }
         };
         lib.callVoidCallback(cb);
-        Assert.assertTrue("Callback not called", called[0]);
+        assertTrue("Callback not called", called[0]);
 
         Map<Callback, CallbackReference> refs = new WeakHashMap<>(callbackCache());
-        Assert.assertTrue("Callback not cached", refs.containsKey(cb));
+        assertTrue("Callback not cached", refs.containsKey(cb));
         CallbackReference ref = refs.get(cb);
         refs = callbackCache();
         Pointer cbstruct = ref.cbstruct;
@@ -386,7 +385,7 @@ public class CallbacksTest implements Paths {
             System.gc();
         }
         Assert.assertNull("Callback not GC'd", ref.get());
-        Assert.assertFalse("Callback still in map", refs.containsValue(ref));
+        assertFalse("Callback still in map", refs.containsValue(ref));
 
         ref = null;
         System.gc();
@@ -398,7 +397,7 @@ public class CallbacksTest implements Paths {
                 System.gc();
             } finally {}
         }
-        Assert.assertEquals("Callback trampoline not freed", 0, cbstruct.peer);
+        assertEquals("Callback trampoline not freed", 0, cbstruct.peer);
     }
 
     @Test
@@ -409,7 +408,7 @@ public class CallbacksTest implements Paths {
                 return arg + arg2;
             }
         };
-        Assert.assertEquals("Wrong callback interface", TestLibrary.Int32Callback.class, CallbackReference.findCallbackClass(cb.getClass()));
+        assertEquals("Wrong callback interface", TestLibrary.Int32Callback.class, CallbackReference.findCallbackClass(cb.getClass()));
     }
 
     @Test
@@ -422,7 +421,7 @@ public class CallbacksTest implements Paths {
             }
         };
         lib.callVoidCallback(cb);
-        Assert.assertTrue("Callback not called", called[0]);
+        assertTrue("Callback not called", called[0]);
     }
 
     @Test
@@ -438,11 +437,11 @@ public class CallbacksTest implements Paths {
         };
         final int EXPECTED = MAGIC*3;
         int value = lib.callInt32Callback(cb, MAGIC, MAGIC*2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong callback value", Integer.toHexString(EXPECTED), Integer.toHexString(value));
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong callback value", Integer.toHexString(EXPECTED), Integer.toHexString(value));
 
         value = lib.callInt32Callback(cb, -1, -2);
-        Assert.assertEquals("Wrong callback return", -3, value);
+        assertEquals("Wrong callback return", -3, value);
     }
 
     @Test
@@ -458,11 +457,11 @@ public class CallbacksTest implements Paths {
         };
         final long EXPECTED = MAGIC*3;
         long value = lib.callInt64Callback(cb, MAGIC, MAGIC*2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong callback value", Long.toHexString(EXPECTED), Long.toHexString(value));
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong callback value", Long.toHexString(EXPECTED), Long.toHexString(value));
 
         value = lib.callInt64Callback(cb, -1, -2);
-        Assert.assertEquals("Wrong callback return", -3, value);
+        assertEquals("Wrong callback return", -3, value);
     }
 
     @Test
@@ -480,13 +479,13 @@ public class CallbacksTest implements Paths {
         };
         final float EXPECTED = FLOAT_MAGIC*3;
         float value = lib.callFloatCallback(cb, FLOAT_MAGIC, FLOAT_MAGIC*2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first argument", FLOAT_MAGIC, args[0], 0);
-        Assert.assertEquals("Wrong second argument", FLOAT_MAGIC*2, args[1], 0);
-        Assert.assertEquals("Wrong callback value", EXPECTED, value, 0);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first argument", FLOAT_MAGIC, args[0], 0);
+        assertEquals("Wrong second argument", FLOAT_MAGIC*2, args[1], 0);
+        assertEquals("Wrong callback value", EXPECTED, value, 0);
 
         value = lib.callFloatCallback(cb, -1f, -2f);
-        Assert.assertEquals("Wrong callback return", -3f, value, 0);
+        assertEquals("Wrong callback return", -3f, value, 0);
     }
 
     @Test
@@ -504,13 +503,13 @@ public class CallbacksTest implements Paths {
         };
         final double EXPECTED = DOUBLE_MAGIC*3;
         double value = lib.callDoubleCallback(cb, DOUBLE_MAGIC, DOUBLE_MAGIC*2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first argument", DOUBLE_MAGIC, args[0], 0);
-        Assert.assertEquals("Wrong second argument", DOUBLE_MAGIC*2, args[1], 0);
-        Assert.assertEquals("Wrong callback value", EXPECTED, value, 0);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first argument", DOUBLE_MAGIC, args[0], 0);
+        assertEquals("Wrong second argument", DOUBLE_MAGIC*2, args[1], 0);
+        assertEquals("Wrong callback value", EXPECTED, value, 0);
 
         value = lib.callDoubleCallback(cb, -1d, -2d);
-        Assert.assertEquals("Wrong callback return", -3d, value, 0);
+        assertEquals("Wrong callback return", -3d, value, 0);
     }
 
     @Test
@@ -530,14 +529,14 @@ public class CallbacksTest implements Paths {
         };
         SmallTestStructure.allocations = 0;
         SmallTestStructure value = lib.callStructureCallback(cb, s);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong argument passed to callback", s.getPointer(), cbarg[0]);
-        Assert.assertEquals("Structure argument not synched on callback return", MAGIC, s.value, 0d);
-        Assert.assertEquals("Wrong structure return", s.getPointer(), value.getPointer());
-        Assert.assertEquals("Structure return not synched", MAGIC, value.value, 0d);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong argument passed to callback", s.getPointer(), cbarg[0]);
+        assertEquals("Structure argument not synched on callback return", MAGIC, s.value, 0d);
+        assertEquals("Wrong structure return", s.getPointer(), value.getPointer());
+        assertEquals("Structure return not synched", MAGIC, value.value, 0d);
         // All structures involved should be created from pointers, with no
         // memory allocation at all.
-        Assert.assertEquals("No structure memory should be allocated", 0, SmallTestStructure.allocations);
+        assertEquals("No structure memory should be allocated", 0, SmallTestStructure.allocations);
     }
 
     @Test
@@ -556,8 +555,8 @@ public class CallbacksTest implements Paths {
             }
         };
         SmallTestStructure value = lib.callStructureCallback(cb, s);
-        Assert.assertEquals("Structure array element 0 not synched on callback return", MAGIC, array[0].value, 0d);
-        Assert.assertEquals("Structure array element 1 not synched on callback return", MAGIC*2, array[1].value, 0d);
+        assertEquals("Structure array element 0 not synched on callback return", MAGIC, array[0].value, 0d);
+        assertEquals("Structure array element 1 not synched on callback return", MAGIC*2, array[1].value, 0d);
     }
 
     @Test
@@ -574,10 +573,10 @@ public class CallbacksTest implements Paths {
             }
         };
         boolean value = lib.callBooleanCallback(cb, true, false);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", true, cbargs[0]);
-        Assert.assertEquals("Wrong second callback argument", false, cbargs[1]);
-        Assert.assertFalse("Wrong boolean return", value);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", true, cbargs[0]);
+        assertEquals("Wrong second callback argument", false, cbargs[1]);
+        assertFalse("Wrong boolean return", value);
     }
 
     @Test
@@ -595,13 +594,13 @@ public class CallbacksTest implements Paths {
         };
         final byte MAGIC = 0x11;
         byte value = lib.callInt8Callback(cb, MAGIC, (byte)(MAGIC*2));
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", Integer.toHexString(MAGIC), Integer.toHexString(cbargs[0]));
-        Assert.assertEquals("Wrong second callback argument", Integer.toHexString(MAGIC*2), Integer.toHexString(cbargs[1]));
-        Assert.assertEquals("Wrong byte return", Integer.toHexString(MAGIC*3), Integer.toHexString(value));
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", Integer.toHexString(MAGIC), Integer.toHexString(cbargs[0]));
+        assertEquals("Wrong second callback argument", Integer.toHexString(MAGIC*2), Integer.toHexString(cbargs[1]));
+        assertEquals("Wrong byte return", Integer.toHexString(MAGIC*3), Integer.toHexString(value));
 
         value = lib.callInt8Callback(cb, (byte)-1, (byte)-2);
-        Assert.assertEquals("Wrong byte return (hi bit)", (byte)-3, value);
+        assertEquals("Wrong byte return (hi bit)", (byte)-3, value);
     }
 
     @Test
@@ -619,13 +618,13 @@ public class CallbacksTest implements Paths {
         };
         final short MAGIC = 0x1111;
         short value = lib.callInt16Callback(cb, MAGIC, (short)(MAGIC*2));
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", Integer.toHexString(MAGIC), Integer.toHexString(cbargs[0]));
-        Assert.assertEquals("Wrong second callback argument", Integer.toHexString(MAGIC*2), Integer.toHexString(cbargs[1]));
-        Assert.assertEquals("Wrong short return", Integer.toHexString(MAGIC*3), Integer.toHexString(value));
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", Integer.toHexString(MAGIC), Integer.toHexString(cbargs[0]));
+        assertEquals("Wrong second callback argument", Integer.toHexString(MAGIC*2), Integer.toHexString(cbargs[1]));
+        assertEquals("Wrong short return", Integer.toHexString(MAGIC*3), Integer.toHexString(value));
 
         value = lib.callInt16Callback(cb, (short)-1, (short)-2);
-        Assert.assertEquals("Wrong short return (hi bit)", (short)-3, value);
+        assertEquals("Wrong short return (hi bit)", (short)-3, value);
     }
 
     @Test
@@ -642,10 +641,10 @@ public class CallbacksTest implements Paths {
             }
         };
         NativeLong value = lib.callNativeLongCallback(cb, new NativeLong(1), new NativeLong(2));
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", new NativeLong(1), cbargs[0]);
-        Assert.assertEquals("Wrong second callback argument", new NativeLong(2), cbargs[1]);
-        Assert.assertEquals("Wrong boolean return", new NativeLong(3), value);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", new NativeLong(1), cbargs[0]);
+        assertEquals("Wrong second callback argument", new NativeLong(2), cbargs[1]);
+        assertEquals("Wrong boolean return", new NativeLong(3), value);
     }
 
     @Test
@@ -662,10 +661,10 @@ public class CallbacksTest implements Paths {
             }
         };
         int value = lib.callInt32Callback(cb, 1, 2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", new Custom(1), cbargs[0]);
-        Assert.assertEquals("Wrong second callback argument", new Custom(2), cbargs[1]);
-        Assert.assertEquals("Wrong NativeMapped return", 3, value);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", new Custom(1), cbargs[0]);
+        assertEquals("Wrong second callback argument", new Custom(2), cbargs[1]);
+        assertEquals("Wrong NativeMapped return", 3, value);
     }
 
     @Test
@@ -685,10 +684,10 @@ public class CallbacksTest implements Paths {
         final String VALUE = "value" + charset.decode(charset.encode(UNICODE));
         final String VALUE2 = getName() + charset.decode(charset.encode(UNICODE));
         String value = lib.callStringCallback(cb, VALUE, VALUE2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong String callback argument 0", VALUE, cbargs[0]);
-        Assert.assertEquals("Wrong String callback argument 1", VALUE2, cbargs[1]);
-        Assert.assertEquals("Wrong String return", VALUE + VALUE2, value);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong String callback argument 0", VALUE, cbargs[0]);
+        assertEquals("Wrong String callback argument 1", VALUE2, cbargs[1]);
+        assertEquals("Wrong String return", VALUE + VALUE2, value);
     }
 
     @Test
@@ -720,7 +719,7 @@ public class CallbacksTest implements Paths {
             } finally {}
         }
         Assert.assertNull("NativeString reference not GC'd", ref.get());
-        Assert.assertEquals("NativeString reference still held: " + m.values(), 0, m.size());
+        assertEquals("NativeString reference still held: " + m.values(), 0, m.size());
     }
 
     @Test
@@ -739,10 +738,10 @@ public class CallbacksTest implements Paths {
         final WString VALUE = new WString("magic" + UNICODE);
         final WString VALUE2 = new WString(getName() + UNICODE);
         WString value = lib.callWideStringCallback(cb, VALUE, VALUE2);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Wrong first callback argument", VALUE, cbargs[0]);
-        Assert.assertEquals("Wrong second callback argument", VALUE2, cbargs[1]);
-        Assert.assertEquals("Wrong wide string return", new WString(VALUE.toString() + VALUE2.toString()), value);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Wrong first callback argument", VALUE, cbargs[0]);
+        assertEquals("Wrong second callback argument", VALUE2, cbargs[1]);
+        assertEquals("Wrong wide string return", new WString(VALUE.toString() + VALUE2.toString()), value);
     }
 
     @Test
@@ -761,13 +760,13 @@ public class CallbacksTest implements Paths {
         final String VALUE = "value" + charset.decode(charset.encode(UNICODE));
         final String[] VALUE_ARRAY = { VALUE, null };
         Pointer value = lib.callStringArrayCallback(cb, VALUE_ARRAY);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("String[] array should not be modified", VALUE, VALUE_ARRAY[0]);
-        Assert.assertEquals("Terminating null should be removed from incoming arg", VALUE_ARRAY.length-1, cbargs[0].length);
-        Assert.assertEquals("String[] argument index 0 mismatch", VALUE_ARRAY[0], cbargs[0][0]);
+        assertTrue("Callback not called", called[0]);
+        assertEquals("String[] array should not be modified", VALUE, VALUE_ARRAY[0]);
+        assertEquals("Terminating null should be removed from incoming arg", VALUE_ARRAY.length-1, cbargs[0].length);
+        assertEquals("String[] argument index 0 mismatch", VALUE_ARRAY[0], cbargs[0][0]);
         String[] result = value.getStringArray(0);
-        Assert.assertEquals("Wrong String[] return", VALUE_ARRAY[0], result[0]);
-        Assert.assertEquals("Terminating null should be removed from return value", VALUE_ARRAY.length-1, result.length);
+        assertEquals("Wrong String[] return", VALUE_ARRAY[0], result[0]);
+        assertEquals("Terminating null should be removed from return value", VALUE_ARRAY.length-1, result.length);
     }
 
     @Test
@@ -784,8 +783,8 @@ public class CallbacksTest implements Paths {
         final int VALUE = 0;
         IntByReference ref = new IntByReference(~VALUE);
         int value = lib.callCallbackWithByReferenceArgument(cb, VALUE, ref);
-        Assert.assertEquals("Wrong value returned", VALUE, value);
-        Assert.assertEquals("Wrong value in by reference memory", VALUE, ref.getValue());
+        assertEquals("Wrong value returned", VALUE, value);
+        assertEquals("Wrong value in by reference memory", VALUE, ref.getValue());
     }
 
     @Test
@@ -808,21 +807,21 @@ public class CallbacksTest implements Paths {
         s.inner.value = 5;
 
         TestStructure result = lib.callCallbackWithStructByValue(cb, s);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertTrue("ByValue argument should own its own memory, instead was "
+        assertTrue("Callback not called", called[0]);
+        assertTrue("ByValue argument should own its own memory, instead was "
                    + arg[0].getPointer(), arg[0].getPointer() instanceof Memory);
-        Assert.assertTrue("ByValue result should own its own memory, instead was "
+        assertTrue("ByValue result should own its own memory, instead was "
                    + result.getPointer(), result.getPointer() instanceof Memory);
         if (!s.dataEquals(arg[0], true)) {
             System.out.println("Mismatch: " + s);
             System.out.println("  versus: " + arg[0]);
         }
-        Assert.assertTrue("Wrong value for callback argument", s.dataEquals(arg[0], true));
+        assertTrue("Wrong value for callback argument", s.dataEquals(arg[0], true));
         if (!s.dataEquals(result, true)) {
             System.out.println("Mismatch: " + s);
             System.out.println("  versus: " + result);
         }
-        Assert.assertTrue("Wrong value for callback result", s.dataEquals(result, true));
+        assertTrue("Wrong value for callback result", s.dataEquals(result, true));
     }
 
     @Test
@@ -844,11 +843,11 @@ public class CallbacksTest implements Paths {
                 return v;
             }
         }, arg);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertTrue("ByValue argument should have its own allocated memory, instead was "
+        assertTrue("Callback not called", called[0]);
+        assertTrue("ByValue argument should have its own allocated memory, instead was "
                    + cbvalue[0].getPointer(), cbvalue[0].getPointer() instanceof Memory);
-        Assert.assertEquals("Wrong value for callback argument", VALUE, cbvalue[0].f1);
-        Assert.assertEquals("Wrong value for callback result", VALUE, result.getTypedValue(String.class));
+        assertEquals("Wrong value for callback argument", VALUE, cbvalue[0].f1);
+        assertEquals("Wrong value for callback result", VALUE, result.getTypedValue(String.class));
     }
 
     @Test
@@ -860,7 +859,7 @@ public class CallbacksTest implements Paths {
             }
         };
         TestLibrary.CbCallback cb2 = lib.callCallbackWithCallback(cb);
-        Assert.assertEquals("Callback reference should be reused", cb, cb2);
+        assertEquals("Callback reference should be reused", cb, cb2);
     }
 
     @Test
@@ -878,7 +877,7 @@ public class CallbacksTest implements Paths {
             };
             TestLibrary.CbCallback cb2 = lib.callCallbackWithCallback(cb);
             String output = s.toString();
-            Assert.assertTrue("Default handler not called", output.length() > 0);
+            assertTrue("Default handler not called", output.length() > 0);
         }
         finally {
             System.setErr(ps);
@@ -910,8 +909,8 @@ public class CallbacksTest implements Paths {
             };
             TestLibrary.CbCallback cb2 = lib.callCallbackWithCallback(cb);
             Assert.assertNotNull("Exception handler not called", CALLBACK[0]);
-            Assert.assertEquals("Wrong callback argument to handler", cb, CALLBACK[0]);
-            Assert.assertEquals("Wrong exception passed to handler", ERROR, CAUGHT[0]);
+            assertEquals("Wrong callback argument to handler", cb, CALLBACK[0]);
+            assertEquals("Wrong exception passed to handler", ERROR, CAUGHT[0]);
         }
         finally {
             Native.setCallbackExceptionHandler(old);
@@ -955,8 +954,8 @@ public class CallbacksTest implements Paths {
             TestLibrary.CbCallback cb = new TestProxy();
             TestLibrary.CbCallback cb2 = lib.callCallbackWithCallback(cb);
             Assert.assertNotNull("Exception handler not called", CALLBACK[0]);
-            Assert.assertEquals("Wrong callback argument to handler", cb, CALLBACK[0]);
-            Assert.assertEquals("Wrong exception passed to handler", ERROR, CAUGHT[0]);
+            assertEquals("Wrong callback argument to handler", cb, CALLBACK[0]);
+            assertEquals("Wrong exception passed to handler", ERROR, CAUGHT[0]);
         }
         finally {
             Native.setCallbackExceptionHandler(old);
@@ -973,7 +972,7 @@ public class CallbacksTest implements Paths {
     public void testInvokeCallback() {
         TestLibrary.Int32CallbackX cb = lib.returnCallback();
         Assert.assertNotNull("Callback should not be null", cb);
-        Assert.assertEquals("Callback should be callable", 1, cb.callback(1));
+        assertEquals("Callback should be callable", 1, cb.callback(1));
 
         TestLibrary.Int32CallbackX cb2 = new TestLibrary.Int32CallbackX() {
             @Override
@@ -995,7 +994,7 @@ public class CallbacksTest implements Paths {
             }
         };
         lib.callCallbackInStruct(s);
-        Assert.assertTrue("Callback not invoked", flag[0]);
+        assertTrue("Callback not invoked", flag[0]);
     }
 
     @Test
@@ -1012,7 +1011,7 @@ public class CallbacksTest implements Paths {
             }
         };
         lib.callVoidCallback(cb);
-        Assert.assertTrue("Callback with custom method name not called", called[0]);
+        assertTrue("Callback with custom method name not called", called[0]);
     }
 
     @Test
@@ -1031,8 +1030,8 @@ public class CallbacksTest implements Paths {
             }
         };
         lib.callVoidCallback(cb);
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertTrue("Native.detach(true) should throw IllegalStateException when called from JVM thread", exceptionThrown[0]);
+        assertTrue("Callback not called", called[0]);
+        assertTrue("Native.detach(true) should throw IllegalStateException when called from JVM thread", exceptionThrown[0]);
     }
 
     @Test
@@ -1154,18 +1153,18 @@ public class CallbacksTest implements Paths {
                 return arg + arg2;
             }
         };
-        Assert.assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.DoubleCallback.class));
-        Assert.assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
+        assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.DoubleCallback.class));
+        assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
 
         double result = lib.callInt32Callback(cb, -1, -2);
-        Assert.assertEquals("Wrong first callback argument", -1, ARGS[0], 0);
-        Assert.assertEquals("Wrong second callback argument", -2, ARGS[1], 0);
-        Assert.assertEquals("Incorrect result of callback invocation", -3, result, 0);
+        assertEquals("Wrong first callback argument", -1, ARGS[0], 0);
+        assertEquals("Wrong second callback argument", -2, ARGS[1], 0);
+        assertEquals("Incorrect result of callback invocation", -3, result, 0);
 
         // Once per argument, then again for return value (convert native int->Java double)
-        Assert.assertEquals("Type mapper not called for arguments", 3, CallbackTestLibrary._MAPPER.fromNativeConversions);
+        assertEquals("Type mapper not called for arguments", 3, CallbackTestLibrary._MAPPER.fromNativeConversions);
         // Once per argument, then again for return value (convert Java double->native int)
-        Assert.assertEquals("Type mapper not called for result", 3, CallbackTestLibrary._MAPPER.toNativeConversions);
+        assertEquals("Type mapper not called for result", 3, CallbackTestLibrary._MAPPER.toNativeConversions);
     }
 
     @Test
@@ -1183,19 +1182,19 @@ public class CallbacksTest implements Paths {
                 return arg + arg2;
             }
         };
-        Assert.assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.WStringCallback.class));
-        Assert.assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
+        assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.WStringCallback.class));
+        assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
 
         final String[] EXPECTED = { "magic" + UNICODE, getName() + UNICODE };
         String result = lib.callWideStringCallback(cb, EXPECTED[0], EXPECTED[1]);
-        Assert.assertEquals("Wrong first callback argument", EXPECTED[0], ARGS[0]);
-        Assert.assertEquals("Wrong second callback argument", EXPECTED[1], ARGS[1]);
-        Assert.assertEquals("Incorrect result of callback invocation", EXPECTED[0] + EXPECTED[1], result);
+        assertEquals("Wrong first callback argument", EXPECTED[0], ARGS[0]);
+        assertEquals("Wrong second callback argument", EXPECTED[1], ARGS[1]);
+        assertEquals("Incorrect result of callback invocation", EXPECTED[0] + EXPECTED[1], result);
 
         // Once per argument, then again for return value (convert const wchar_t*->Java String)
-        Assert.assertEquals("Type mapper not called for arguments", 3, CallbackTestLibrary._MAPPER.fromNativeConversions);
+        assertEquals("Type mapper not called for arguments", 3, CallbackTestLibrary._MAPPER.fromNativeConversions);
         // Once per argument, then again for return value (convert Java String->const wchar_t*)
-        Assert.assertEquals("Type mapper not called for result", 3, CallbackTestLibrary._MAPPER.toNativeConversions);
+        assertEquals("Type mapper not called for result", 3, CallbackTestLibrary._MAPPER.toNativeConversions);
     }
 
     @Test
@@ -1212,13 +1211,13 @@ public class CallbacksTest implements Paths {
                 return arg + arg2;
             }
         };
-        Assert.assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.FloatCallback.class));
-        Assert.assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
+        assertEquals("Wrong type mapper for callback class", CallbackTestLibrary._MAPPER, Native.getTypeMapper(CallbackTestLibrary.FloatCallback.class));
+        assertEquals("Wrong type mapper for callback object", CallbackTestLibrary._MAPPER, Native.getTypeMapper(cb.getClass()));
 
         float result = lib.callInt64Callback(cb, -1, -2);
-        Assert.assertEquals("Wrong first callback argument", -1, ARGS[0], 0);
-        Assert.assertEquals("Wrong second callback argument", -2, ARGS[1], 0);
-        Assert.assertEquals("Incorrect result of callback invocation", -3, result, 0);
+        assertEquals("Wrong first callback argument", -1, ARGS[0], 0);
+        assertEquals("Wrong second callback argument", -2, ARGS[1], 0);
+        assertEquals("Incorrect result of callback invocation", -3, result, 0);
     }
 
     protected void callThreadedCallback(TestLibrary.VoidCallback cb,
@@ -1267,8 +1266,12 @@ public class CallbacksTest implements Paths {
             }
         };
         callThreadedCallback(cb, null, 1, 100, called);
-
-        Assert.assertFalse("Callback thread default should not be attached as daemon", daemon[0]);
+        assertEquals(1, called[0]);
+        if (Native.jni) {
+            assertFalse("Callback thread default should not be attached as daemon", daemon[0]);
+        } else {
+            assertTrue("Callback thread is daemon", daemon[0]);
+        }
         // thread name and group are not defined
     }
 
@@ -1309,14 +1312,14 @@ public class CallbacksTest implements Paths {
         };
         callThreadedCallback(cb, init, 2, 2000, called, 1);
 
-        Assert.assertTrue("Callback thread not attached as daemon", daemon[0]);
-        Assert.assertEquals("Callback thread name not applied", tname, name[0]);
-        Assert.assertEquals("Callback thread group not applied", testGroup, group[0]);
+        assertTrue("Callback thread not attached as daemon", daemon[0]);
+        assertEquals("Callback thread name not applied", tname, name[0]);
+        assertEquals("Callback thread group not applied", testGroup, group[0]);
         // NOTE: older phoneME incorrectly reports thread "alive" status
         if (!alive[0]) {
             throw new Error("VM incorrectly reports Thread.isAlive() == false within callback");
         }
-        Assert.assertTrue("Thread should still be alive", t[0].isAlive());
+        assertTrue("Thread should still be alive", t[0].isAlive());
 
         long start = System.currentTimeMillis();
         while (called[0] < 2) {
@@ -1378,7 +1381,7 @@ public class CallbacksTest implements Paths {
         };
         callThreadedCallback(cb, init, COUNT, 100, called);
 
-        Assert.assertEquals("Multiple callbacks on a given native thread should use the same Thread mapping: " + threads, 1, threads.size());
+        assertEquals("Multiple callbacks on a given native thread should use the same Thread mapping: " + threads, 1, threads.size());
 
         waitFor(threads.iterator().next());
     }
@@ -1464,7 +1467,7 @@ public class CallbacksTest implements Paths {
         };
         callThreadedCallback(cb, null, COUNT, 100, called);
 
-        Assert.assertEquals("Multiple callbacks in the same native thread should use the same Thread mapping: "
+        assertEquals("Multiple callbacks in the same native thread should use the same Thread mapping: "
                      + threads, 1, threads.size());
 
         waitFor(threads.iterator().next());
@@ -1486,7 +1489,7 @@ public class CallbacksTest implements Paths {
 
         TestCallback cb = new TestCallback();
         lib.callVoidCallback(cb);
-        Assert.assertTrue("Callback not called", called[0]);
+        assertTrue("Callback not called", called[0]);
 
         // Check module information
         Pointer fp = CallbackReference.getFunctionPointer(cb);
@@ -1495,21 +1498,21 @@ public class CallbacksTest implements Paths {
         final int GET_MODULE_HANDLE_FROM_ADDRESS = 0x4;
         PointerByReference pref = new PointerByReference();
         int result = f.invokeInt(new Object[] { Integer.valueOf(GET_MODULE_HANDLE_FROM_ADDRESS), fp, pref });
-        Assert.assertTrue("GetModuleHandleEx(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
+        assertTrue("GetModuleHandleEx(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
 
         f = kernel32.getFunction("GetModuleFileNameW");
         char[] buf = new char[1024];
         result = f.invokeInt(new Object[] { pref.getValue(), buf, buf.length });
-        Assert.assertTrue("GetModuleFileName(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
+        assertTrue("GetModuleFileName(fptr) failed: " + Native.getLastErrorFfm(), result != 0);
 
         f = kernel32.getFunction("GetModuleHandleW");
         Pointer handle = f.invokePointer(new Object[] { Native.jnidispatchPath != null ? Native.jnidispatchPath : "jnidispatch" });
         Assert.assertNotNull("GetModuleHandle(\"jnidispatch\") failed: " + Native.getLastErrorFfm(), handle);
-        Assert.assertEquals("Wrong module HANDLE for DLL function pointer", handle, pref.getValue());
+        assertEquals("Wrong module HANDLE for DLL function pointer", handle, pref.getValue());
 
         // Check slot re-use
         Map<Callback, CallbackReference> refs = new WeakHashMap<>(callbackCache());
-        Assert.assertTrue("Callback not cached", refs.containsKey(cb));
+        assertTrue("Callback not cached", refs.containsKey(cb));
         CallbackReference ref = refs.get(cb);
         refs = callbackCache();
         Pointer cbstruct = ref.cbstruct;
@@ -1522,7 +1525,7 @@ public class CallbacksTest implements Paths {
             System.gc();
         }
         Assert.assertNull("Callback not GC'd", ref.get());
-        Assert.assertFalse("Callback still in map", refs.containsValue(ref));
+        assertFalse("Callback still in map", refs.containsValue(ref));
 
         ref = null;
         System.gc();
@@ -1532,7 +1535,7 @@ public class CallbacksTest implements Paths {
             Thread.sleep(10); // Give the GC a chance to run
             System.gc();
         }
-        Assert.assertEquals("Callback trampoline not freed", 0, cbstruct.peer);
+        assertEquals("Callback trampoline not freed", 0, cbstruct.peer);
 
         // Next allocation should be at same place
         called[0] = false;
@@ -1542,8 +1545,8 @@ public class CallbacksTest implements Paths {
         ref = refs.get(cb);
         cbstruct = ref.cbstruct;
 
-        Assert.assertTrue("Callback not called", called[0]);
-        Assert.assertEquals("Same (in-DLL) address should be re-used for DLL callbacks after callback is GCd", first_fptr, cbstruct.getPointer(0));
+        assertTrue("Callback not called", called[0]);
+        assertEquals("Same (in-DLL) address should be re-used for DLL callbacks after callback is GCd", first_fptr, cbstruct.getPointer(0));
     }
 
     @Test
@@ -1588,7 +1591,7 @@ public class CallbacksTest implements Paths {
             Pointer p = CallbackReference.getFunctionPointer(cb);
             CallbackReference ref = CallbackReference.callbackMap.get(cb);
             Assert.assertNotNull("CallbackReference not found", ref);
-            Assert.assertEquals("Tag-based calling convention not applied", Function.ALT_CONVENTION, ref.callingConvention);
+            assertEquals("Tag-based calling convention not applied", Function.ALT_CONVENTION, ref.callingConvention);
         }
         catch (IllegalArgumentException e) {
             // Alt convention not supported
@@ -1615,7 +1618,7 @@ public class CallbacksTest implements Paths {
             Assert.assertNotNull("No function pointer", p);
             CallbackReference ref = CallbackReference.callbackMap.get(cb);
             Assert.assertNotNull("CallbackReference not found", ref);
-            Assert.assertEquals("Option-based calling convention not applied", Function.ALT_CONVENTION, ref.callingConvention);
+            assertEquals("Option-based calling convention not applied", Function.ALT_CONVENTION, ref.callingConvention);
         } catch(IllegalArgumentException e) {
             // Alt convention not supported
         }
