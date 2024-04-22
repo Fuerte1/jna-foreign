@@ -412,6 +412,9 @@ public class Crypt32Test {
 
     @Test
     public void testCertVerifyCertificateChainPolicy() {
+        if (!Native.jni) {
+            Assert.fail("EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00007ff9d20209f5, pid=29024, tid=14320");
+        }
         CERT_CHAIN_CONTEXT pChainContext = new CERT_CHAIN_CONTEXT();
 
         CERT_CHAIN_POLICY_PARA ChainPolicyPara = new CERT_CHAIN_POLICY_PARA();
