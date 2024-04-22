@@ -95,4 +95,12 @@
     </dependency>
   </dependencies>
 
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Fuerte1 Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/Fuerte1/jna-foreign</url>
+    </repository>
+  </distributionManagement>
+
 </project>
