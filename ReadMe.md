@@ -7,10 +7,10 @@ JNI is not used at all, unless system property jna.jni = true.
 This can be used to run unit tests and compare functionality with pure Java version (jna.jni = false).
 
 Status of JNA unit tests:
-Tests failed: 206, passed: 431, ignored: 24 of 661 tests
+* Tests failed: 206, passed: 431, ignored: 24 of 661 tests
 
 Status of Win32 platform unit tests:
-Tests failed: 143, passed: 502, ignored: 13 of 658 tests (COM tests skipped)
+* Tests failed: 143, passed: 502, ignored: 13 of 658 tests (COM tests skipped)
 
 Projects Using JNA
 ==================
@@ -27,6 +27,7 @@ Download
 ========
 
 JNA: Version 5.14.0
+
 JNAF: 7.0.1 (I don't know why, JNA makefile used this version for jnidispatch.dll)
 
 JNAF
@@ -57,12 +58,13 @@ Does not work:
 * By-value structures larger than 8 bytes (8 bytes fit into Java long) 
 * Java objects (native libraries normally do not use or return Java objects)
 * Varargs
+* ...
 
 Community and Support
 =====================
 
 All questions should be posted to the [jna-users Google group](http://groups.google.com/group/jna-users). 
-Issues can be submitted [here on Github](https://github.com/Fuerte1/jna-foreign/issues).
+Issues can be submitted [JNA Github](https://github.com/java-native-access/jna/issues).
 
 Contributing
 ============
